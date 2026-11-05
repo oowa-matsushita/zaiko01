@@ -86,7 +86,7 @@ async function load() {
     state.items = data.items;
     render(data);
   } catch (e) {
-    $('#list').innerHTML = `<tr><td class="empty" colspan="${COLS.length}">読み込みに失敗しました：${esc(e.message)}</td></tr>`;
+    setBody(`<tbody><tr><td class="empty" colspan="${colCount()}">読み込みに失敗しました：${esc(e.message)}</td></tr></tbody>`);
   }
 }
 
@@ -98,7 +98,7 @@ const COLS = [
   ['color', '色'],
   ['color_code', 'カラーコード'],
   ['mileage', '走行距離', 'num'],
-  ['own_company', '自社名'],
+  ['own_date', '自社名', 'date'],
   ['venue', '会場', 'center'],
   ['event_date', '開催日', 'date'],
   ['shipped_date', '出庫日', 'date'],
@@ -108,6 +108,18 @@ const COLS = [
   ['notes', 'メモ', 'wrap'],
   ['created_at', '登録日'],
 ];
+const COL = Object.fromEntries(COLS.map(([k, label, cls]) => [k, { label, cls }]));
+// 表示レイアウト。2段は縦型モニター向けに1台を2行で表示（No. は2行分）
+const LAYOUTS = {
+  1: [COLS.map((c) => c[0])],
+  2: [
+    ['id', 'name', 'chassis_no', 'color', 'color_code', 'mileage', 'has_warranty', 'sales_points'],
+    ['own_date', 'venue', 'event_date', 'shipped_date', 'created_at', 'has_manual', 'notes'],
+  ],
+};
+let layoutKey = '2';
+try { layoutKey = localStorage.getItem('zaiko-layout') || '2'; } catch { /* 保存できなくても既定で表示 */ }
+const layout = () => LAYOUTS[layoutKey] || LAYOUTS[2];
 const sortState = { key: 'id', dir: -1 };
 // 並び替え用の値（マイルは km に換算して比較）
 const sortVal = (it, k) => k === 'mileage'
@@ -117,28 +129,55 @@ const cellHtml = (it, k) => {
   switch (k) {
     case 'mileage': return esc(fmtMileage(it) ?? '');
     case 'has_warranty': case 'has_manual': return it[k] ? '✓' : '';
-    case 'created_at': return esc(jstDate(it.created_at));
-    case 'event_date': case 'shipped_date': return esc(mdDate(it[k]));
+    case 'created_at': return esc(mdDate(jstDate(it.created_at)));
+    case 'own_date': case 'event_date': case 'shipped_date': return esc(mdDate(it[k]));
     default: return esc(it[k] ?? '');
   }
 };
 
 function renderHead() {
-  $('#tbl thead tr').innerHTML = COLS.map(([k, label, cls]) => {
+  const rows = layout();
+  $('#tbl thead').innerHTML = rows.map((keys, r) => `<tr>${keys.map((k) => {
+    const { label, cls } = COL[k];
     const arrow = sortState.key === k ? (sortState.dir > 0 ? '▲' : '▼') : '';
-    return `<th data-key="${k}" class="${cls === 'sticky' || cls === 'center' ? cls : ''}">${label}<span class="arrow">${arrow}</span></th>`;
-  }).join('');
+    const span = k === 'id' && rows.length > 1 ? ` rowspan="${rows.length}"` : '';
+    return `<th data-key="${k}"${span} class="${cls === 'sticky' || cls === 'center' ? cls : ''}${r > 0 ? ' sub' : ''}">${label}<span class="arrow">${arrow}</span></th>`;
+  }).join('')}</tr>`).join('');
+  // 2段目の見出しを1段目の下に固定する
+  const first = $('#tbl thead tr');
+  const h = first ? first.getBoundingClientRect().height : 0;
+  document.querySelectorAll('#tbl thead th.sub').forEach((th) => { th.style.top = h + 'px'; });
+  // 2段表示は横幅が収まるので列の固定はしない
+  if (rows.length > 1) document.querySelectorAll('#tbl thead th.sticky').forEach((th) => th.classList.remove('sticky'));
 }
+
+function rowHtml(it) {
+  const rows = layout();
+  return rows.map((keys, r) => `<tr data-id="${it.id}"${r === rows.length - 1 ? ' class="last"' : ''}>${keys.map((k, i) => {
+    if (k === 'id') {
+      return `<td class="rowno"${rows.length > 1 ? ` rowspan="${rows.length}"` : ''}><button class="edit-btn" data-open="${it.id}" title="フォームで編集" aria-label="フォームで編集">✎</button>${it.id}</td>`;
+    }
+    const base = rows.length > 1 && COL[k].cls === 'sticky' ? '' : COL[k].cls;
+    const cls = [base, EDITABLE.has(k) ? 'editable' : ''].filter(Boolean).join(' ');
+    return `<td class="${cls}" data-key="${k}">${cellHtml(it, k)}</td>`;
+  }).join('')}</tr>`).join('');
+}
+
+function setBody(html) {
+  document.querySelectorAll('#tbl tbody').forEach((t) => t.remove());
+  $('#tbl').insertAdjacentHTML('beforeend', html);
+}
+const colCount = () => Math.max(...layout().map((r) => r.length));
 
 function render({ total }) {
   $('#count').textContent = `${total} 台`;
-  for (const [k, id] of [['color', '#dl-color'], ['own_company', '#dl-company']]) {
+  for (const [k, id] of [['color', '#dl-color']]) {
     const vals = [...new Set(state.items.map((i) => i[k]).filter(Boolean))].sort();
     $(id).innerHTML = vals.map((v) => `<option value="${esc(v)}">`).join('');
   }
   renderHead();
   if (!state.items.length) {
-    $('#list').innerHTML = `<tr><td class="empty" colspan="${COLS.length}">${state.q || state.event_date || state.shipped_date ? '該当する車両がありません' : 'まだ登録がありません。「＋ 買取登録」から追加してください'}</td></tr>`;
+    setBody(`<tbody><tr><td class="empty" colspan="${colCount()}">${state.q || state.event_date || state.shipped_date ? '該当する車両がありません' : 'まだ登録がありません。「＋ 買取登録」から追加してください'}</td></tr></tbody>`);
     return;
   }
   const { key, dir } = sortState;
@@ -148,11 +187,8 @@ function render({ total }) {
     if (y == null || y === '') return -1;
     return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'ja')) * dir;
   });
-  $('#list').innerHTML = rows.map((it) => `<tr data-id="${it.id}">${
-    COLS.map(([k, , cls]) => k === 'id'
-      ? `<td class="rowno"><button class="edit-btn" data-open="${it.id}" title="フォームで編集" aria-label="フォームで編集">✎</button>${it.id}</td>`
-      : `<td class="${cls || ''}${EDITABLE.has(k) ? ' editable' : ''}" data-key="${k}">${cellHtml(it, k)}</td>`).join('')
-  }</tr>`).join('');
+  // 1台ごとに tbody を分けて、2段表示でも1台単位で色分け・ハイライトする
+  setBody(rows.map((it) => `<tbody class="vehicle">${rowHtml(it)}</tbody>`).join(''));
 }
 
 $('#tbl thead').addEventListener('click', (e) => {
@@ -219,6 +255,16 @@ $('#btn-delete').addEventListener('click', async () => {
 });
 $('#btn-add').addEventListener('click', () => openForm(null));
 
+const layoutBtn = $('#btn-layout');
+const updateLayoutBtn = () => { layoutBtn.textContent = layoutKey === '1' ? '表示：1段（横長）' : '表示：2段（縦型）'; };
+updateLayoutBtn();
+layoutBtn.addEventListener('click', () => {
+  layoutKey = layoutKey === '1' ? '2' : '1';
+  try { localStorage.setItem('zaiko-layout', layoutKey); } catch { /* 無視 */ }
+  updateLayoutBtn();
+  render({ total: state.items.length });
+});
+
 // 日付欄はクリックでカレンダーを開く
 function openPicker(input) {
   try { input.showPicker(); } catch { /* 未対応ブラウザは標準の動作 */ }
@@ -228,9 +274,9 @@ document.addEventListener('click', (e) => {
 });
 
 // ---- 一覧での直接編集（ダブルクリック／ダブルタップ） ----
-const EDITABLE = new Set(['name', 'chassis_no', 'color', 'color_code', 'mileage', 'own_company', 'venue',
+const EDITABLE = new Set(['name', 'chassis_no', 'color', 'color_code', 'mileage', 'own_date', 'venue',
   'event_date', 'shipped_date', 'sales_points', 'has_warranty', 'has_manual', 'notes']);
-const DATE_KEYS = new Set(['event_date', 'shipped_date']);
+const DATE_KEYS = new Set(['own_date', 'event_date', 'shipped_date']);
 const VENUES = ['名古屋', '静岡', '廃車'];
 let editing = null; // { td, item, key }
 
@@ -291,7 +337,7 @@ function startEdit(td) {
     read = () => ({ [key]: td.querySelector('textarea').value });
   } else {
     const type = DATE_KEYS.has(key) ? 'date' : 'text';
-    html = `<input type="${type}" value="${esc(item[key] ?? '')}"${key === 'color' ? ' list="dl-color"' : key === 'own_company' ? ' list="dl-company"' : ''}>`;
+    html = `<input type="${type}" value="${esc(item[key] ?? '')}"${key === 'color' ? ' list="dl-color"' : ''}>`;
     read = () => ({ [key]: td.querySelector('input').value });
   }
   td.classList.add('editing');
@@ -322,7 +368,8 @@ function startEdit(td) {
 
 // スマホでも確実に動くよう、2回のクリックの間隔で判定する
 let lastTap = { td: null, t: 0 };
-$('#list').addEventListener('click', (e) => {
+$('#tbl').addEventListener('click', (e) => {
+  if (e.target.closest('thead')) return;
   const open = e.target.closest('[data-open]');
   if (open) { openForm(state.items.find((i) => i.id == open.dataset.open)); return; }
   const td = e.target.closest('td.editable');
@@ -346,7 +393,7 @@ $('#q').addEventListener('input', (e) => {
 $('#btn-csv').addEventListener('click', () => {
   const cols = [['id', 'ID'], ['name', '車名'], ['chassis_no', '車台番号'], ['color', '色'], ['color_code', 'カラーコード'],
     ['mileage', '走行距離'], ['mileage_unit', '距離単位'], ['sales_points', 'セールスポイント'],
-    ['own_company', '自社名'], ['venue', '会場'], ['event_date', '開催日'], ['shipped_date', '出庫日'],
+    ['own_date', '自社名', 'date'], ['venue', '会場'], ['event_date', '開催日'], ['shipped_date', '出庫日'],
     ['has_warranty', '保証書'], ['has_manual', '取説'], ['notes', 'メモ'], ['created_at', '登録日時']];
   const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const val = (it, k) => k === 'has_warranty' || k === 'has_manual' ? (it[k] ? 'あり' : 'なし')

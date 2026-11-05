@@ -24,8 +24,8 @@ const ADDED_COLUMNS = {
   sales_points: 'TEXT',
   has_warranty: 'INTEGER NOT NULL DEFAULT 0',
   has_manual: 'INTEGER NOT NULL DEFAULT 0',
-  own_date: 'TEXT',      // 旧「自社」（日付）。画面では未使用
-  own_company: 'TEXT',   // 自社名
+  own_date: 'TEXT',      // 自社名（日付）
+  own_company: 'TEXT',   // 未使用（一時的に文字の自社名を入れていた列）
   venue: 'TEXT',         // 会場
   event_date: 'TEXT',    // 開催日
   shipped_date: 'TEXT',  // 出庫日

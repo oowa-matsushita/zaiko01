@@ -22,14 +22,14 @@
     <div class="row">
       <span id="count" class="muted"></span>
       <span class="spacer"></span>
+      <button id="btn-layout"></button>
       <button id="btn-csv">CSV出力（Excel）</button>
     </div>
   </section>
 
   <div class="table-wrap">
     <table id="tbl">
-      <thead><tr></tr></thead>
-      <tbody id="list"></tbody>
+      <thead></thead>
     </table>
   </div>
   <p class="muted hint">セルをダブルクリック（ダブルタップ）でその場で編集、Enterで保存・Escで取消。✎ でフォーム編集・削除。列名で並び替え。</p>
@@ -53,7 +53,7 @@
         </span>
         <small class="mileage-conv"></small>
       </label>
-      <label>自社名<input name="own_company" list="dl-company" placeholder="例：〇〇自動車"></label>
+      <label>自社名<input name="own_date" type="date"></label>
       <label>会場
         <select name="venue">
           <option value="">未選択</option>
@@ -80,7 +80,6 @@
     </form>
   </dialog>
   <datalist id="dl-color"></datalist>
-  <datalist id="dl-company"></datalist>
 
   <script src="/app.js" type="module"></script>
 </body>

@@ -107,10 +107,14 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 4px; }
 #tbl thead th .arrow { color: var(--muted); font-size: .75rem; margin-left: 2px; }
 #tbl th.sticky, #tbl td.sticky { position: sticky; left: 0; z-index: 1; background: inherit; }
 #tbl thead th.sticky { z-index: 3; background: var(--thead); }
-#tbl tbody tr { background: var(--card); }
+#tbl tbody.vehicle { background: var(--card); }
+#tbl tbody.vehicle tr { background: inherit; }
 #tbl td.editable { cursor: cell; }
-#tbl tbody tr:nth-child(even) { background: var(--zebra); }
-#tbl tbody tr:hover { background: var(--hover); }
+#tbl tbody.vehicle:nth-of-type(even) { background: var(--zebra); }
+#tbl tbody.vehicle:hover { background: var(--hover); }
+#tbl tbody.vehicle tr.last td, #tbl tbody.vehicle td.rowno { border-bottom: 2px solid var(--tline); }
+#tbl thead tr:last-child th, #tbl thead th[rowspan] { border-bottom: 2px solid var(--tline); }
+#tbl thead th.sub { font-weight: 500; }
 #tbl td.num { text-align: right; font-variant-numeric: tabular-nums; }
 #tbl td.center, #tbl th.center { text-align: center; }
 #tbl td.wrap { white-space: normal; min-width: 200px; max-width: 320px; overflow-wrap: anywhere; }
