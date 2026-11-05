@@ -1,7 +1,7 @@
 // ID・パスワードによるログイン
 // 必要なシークレット（Cloudflare の Worker → 設定 → 変数とシークレット）:
 //   LOGIN_ID        ログインID
-//   LOGIN_PASSWORD  パスワード（12文字以上推奨）
+//   LOGIN_PASSWORD  パスワード（6桁の数字）
 //   SESSION_SECRET  ログイン状態の署名用のランダムな長い文字列（32文字以上）
 import { json } from './lib.js';
 
@@ -9,7 +9,7 @@ const COOKIE = 'zaiko_session';
 const SESSION_DAYS = 30;
 const LOCK_WINDOW_MS = 15 * 60e3; // 15分
 const MAX_FAIL_PER_IP = 5;        // 同じIPから15分で5回失敗したらロック
-const MAX_FAIL_TOTAL = 30;        // 全体で15分に30回失敗したらロック（総当たり対策）
+const MAX_FAIL_TOTAL = 10;        // 全体で15分に10回失敗したらロック（6桁の総当たり対策）
 
 const enc = new TextEncoder();
 const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -125,7 +125,7 @@ button:disabled{opacity:.6}.err{color:var(--danger);margin:0;font-size:.9rem;min
   <h1>中古車 買取在庫</h1>
   ${setupMsg}
   <label>ID<input name="id" autocomplete="username" autocapitalize="none" required></label>
-  <label>パスワード<input name="password" type="password" autocomplete="current-password" required></label>
+  <label>パスワード（6桁）<input name="password" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" required></label>
   <p class="err" id="e" role="alert"></p>
   <button id="b">ログイン</button>
 </form>
