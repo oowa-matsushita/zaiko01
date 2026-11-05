@@ -44,24 +44,36 @@ function shippedDates() {
   return Array.from({ length: 7 }, (_, i) => addDays(t, i));
 }
 
-function fillDateSelect(sel, dates, counts, current) {
+function fillDateBoxes(box, field, dates, counts) {
+  const current = state[field];
   const extra = current && !dates.includes(current) ? [current] : [];
-  sel.innerHTML = '<option value="">すべて</option>' + [...dates, ...extra].map((d) =>
-    `<option value="${d}">${shortDate(d)}　${counts[d] || 0}台</option>`).join('');
-  sel.value = current || '';
-  sel.classList.toggle('active', !!current);
+  box.innerHTML = `<button type="button" class="date-box all" data-date="" aria-pressed="${!current}">
+      <span class="n">すべて</span></button>` +
+    [...dates, ...extra].map((d) => {
+      const n = counts[d] || 0;
+      const cls = [n ? '' : 'zero', dow(d) === 6 ? 'sat' : dow(d) === 0 ? 'sun' : ''].join(' ');
+      return `<button type="button" class="date-box ${cls}" data-date="${d}" aria-pressed="${current === d}">
+        <span class="d">${shortDate(d)}</span><span class="n">${n}<small>台</small></span></button>`;
+    }).join('');
 }
 
 async function loadDateCounts() {
   try {
     const c = await api('/api/date-counts');
-    fillDateSelect($('#f-event'), eventDates(), c.event_date, state.event_date);
-    fillDateSelect($('#f-shipped'), shippedDates(), c.shipped_date, state.shipped_date);
+    fillDateBoxes($('#f-event'), 'event_date', eventDates(), c.event_date);
+    fillDateBoxes($('#f-shipped'), 'shipped_date', shippedDates(), c.shipped_date);
   } catch { /* 台数が取れなくても一覧は表示する */ }
 }
 
-$('#f-event').addEventListener('change', (e) => { state.event_date = e.target.value; load(); });
-$('#f-shipped').addEventListener('change', (e) => { state.shipped_date = e.target.value; load(); });
+// 枠をクリックで絞り込み（選択中の枠をもう一度押すと解除）
+for (const [id, field] of [['#f-event', 'event_date'], ['#f-shipped', 'shipped_date']]) {
+  $(id).addEventListener('click', (e) => {
+    const b = e.target.closest('.date-box');
+    if (!b) return;
+    state[field] = state[field] === b.dataset.date ? '' : b.dataset.date;
+    load();
+  });
+}
 
 async function load() {
   const p = new URLSearchParams({ sort: 'created_desc', limit: '1000' });

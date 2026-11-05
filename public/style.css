@@ -132,8 +132,21 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 4px; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .toast.error { background: var(--danger); color: #fff; }
 input[type=date] { cursor: pointer; }
-.date-filters { display: flex; flex-wrap: wrap; gap: 8px 20px; }
-.date-filters label { flex: 1 1 220px; max-width: 300px; }
-.date-filters label { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; font-size: .9rem; font-weight: 600; }
-.date-filters select { font-variant-numeric: tabular-nums; }
-.date-filters select.active { border-color: var(--accent); outline: 1px solid var(--accent); }
+.date-filters { display: grid; gap: 8px; }
+.df-row { display: flex; align-items: stretch; gap: 8px; min-width: 0; }
+.df-label { font-size: .9rem; font-weight: 600; writing-mode: horizontal-tb; align-self: center; flex: 0 0 auto; width: 3.5em; }
+.date-boxes { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; min-width: 0; flex: 1; }
+.date-box {
+  flex: 0 0 auto; min-width: 72px; padding: 6px 8px; border-radius: 8px; text-align: center;
+  background: var(--card); border: 1px solid var(--tline); line-height: 1.25; font-variant-numeric: tabular-nums;
+}
+.date-box .d { display: block; font-size: .85rem; }
+.date-box .n { display: block; font-size: 1.05rem; font-weight: 700; }
+.date-box .n small { font-size: .7rem; font-weight: 400; margin-left: 1px; }
+.date-box.zero .n { color: var(--muted); font-weight: 400; }
+.date-box.sat .d { color: #2563eb; }
+.date-box.sun .d { color: #dc2626; }
+.date-box.all { display: flex; align-items: center; justify-content: center; }
+.date-box.all .n { font-size: .95rem; }
+.date-box[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.date-box[aria-pressed="true"] .d, .date-box[aria-pressed="true"] .n { color: var(--accent-text); }
