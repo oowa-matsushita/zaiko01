@@ -4,6 +4,7 @@ import * as item from './api/item.js';
 import * as stats from './api/stats.js';
 import * as dateCounts from './api/date_counts.js';
 import * as ocrPlate from './api/ocr_plate.js';
+import * as importItems from './api/import.js';
 import { json, ensureSchema } from './lib.js';
 import { isLoggedIn, handleLogin, handleLogout, loginPage } from './auth.js';
 
@@ -13,6 +14,7 @@ const ROUTES = [
   [/^\/api\/stats\/?$/, stats],
   [/^\/api\/date-counts\/?$/, dateCounts],
   [/^\/api\/ocr-plate\/?$/, ocrPlate],
+  [/^\/api\/import\/?$/, importItems],
 ];
 const METHOD = { GET: 'onRequestGet', POST: 'onRequestPost', PUT: 'onRequestPut', PATCH: 'onRequestPatch', DELETE: 'onRequestDelete' };
 
