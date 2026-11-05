@@ -15,7 +15,7 @@
 }
 * { box-sizing: border-box; }
 body {
-  margin: 0 auto; max-width: 960px; padding: 0 16px 48px;
+  margin: 0 auto; max-width: 1400px; padding: 0 16px 48px;
   font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
   background: var(--bg); color: var(--text); line-height: 1.5;
 }
@@ -43,7 +43,7 @@ input, select, textarea {
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .tabs button.active { background: var(--text); color: var(--bg); border-color: var(--text); }
 .row { display: flex; gap: 8px; }
-.row select { flex: 1; }
+.row { align-items: center; }
 .list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
 .item {
   background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
@@ -88,3 +88,31 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 4px; }
 #form label.check input { width: 20px; height: 20px; }
 .tag { display: inline-block; font-size: .72rem; padding: 0 6px; border-radius: 4px; background: var(--line); color: var(--text); margin-right: 4px; }
 .points { font-size: .85rem; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.table-wrap {
+  margin-top: 12px; overflow: auto; max-height: calc(100vh - 190px);
+  background: var(--card); border: 1px solid var(--tline); border-radius: 8px;
+}
+:root { --tline: #c9ced6; --thead: #f0f2f5; --zebra: #f8f9fb; --hover: #e8f0fe; }
+@media (prefers-color-scheme: dark) { :root { --tline: #3a414d; --thead: #232934; --zebra: #1f242d; --hover: #263247; } }
+#tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: .9rem; }
+#tbl th, #tbl td {
+  border-right: 1px solid var(--tline); border-bottom: 1px solid var(--tline);
+  padding: 6px 10px; text-align: left; vertical-align: top; white-space: nowrap;
+}
+#tbl th:last-child, #tbl td:last-child { border-right: 0; }
+#tbl thead th {
+  position: sticky; top: 0; z-index: 2; background: var(--thead); font-weight: 600;
+  cursor: pointer; user-select: none;
+}
+#tbl thead th .arrow { color: var(--muted); font-size: .75rem; margin-left: 2px; }
+#tbl th.sticky, #tbl td.sticky { position: sticky; left: 0; z-index: 1; background: inherit; }
+#tbl thead th.sticky { z-index: 3; background: var(--thead); }
+#tbl tbody tr { background: var(--card); cursor: pointer; }
+#tbl tbody tr:nth-child(even) { background: var(--zebra); }
+#tbl tbody tr:hover { background: var(--hover); }
+#tbl td.num { text-align: right; font-variant-numeric: tabular-nums; }
+#tbl td.center, #tbl th.center { text-align: center; }
+#tbl td.wrap { white-space: normal; min-width: 200px; max-width: 320px; overflow-wrap: anywhere; }
+#tbl td.rowno { color: var(--muted); text-align: right; }
+#tbl .empty { white-space: normal; cursor: default; }
+.hint { font-size: .8rem; margin: 6px 0 0; }

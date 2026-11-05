@@ -16,18 +16,19 @@
   <section class="filters">
     <input id="q" type="search" placeholder="車名・車台番号・色・セールスポイントなどで検索">
     <div class="row">
-      <select id="sort" aria-label="並び順">
-        <option value="created_desc">登録が新しい順</option>
-        <option value="created_asc">登録が古い順</option>
-        <option value="mileage_asc">走行距離が少ない順</option>
-        <option value="mileage_desc">走行距離が多い順</option>
-      </select>
-      <button id="btn-csv">CSV出力</button>
+      <span id="count" class="muted"></span>
+      <span class="spacer"></span>
+      <button id="btn-csv">CSV出力（Excel）</button>
     </div>
   </section>
 
-  <p id="count" class="muted"></p>
-  <ul id="list" class="list"></ul>
+  <div class="table-wrap">
+    <table id="tbl">
+      <thead><tr></tr></thead>
+      <tbody id="list"></tbody>
+    </table>
+  </div>
+  <p class="muted hint">列名をタップすると並び替え、行をタップすると編集できます</p>
 
   <dialog id="dlg">
     <form id="form" method="dialog">
