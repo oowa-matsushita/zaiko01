@@ -1,6 +1,6 @@
 [hidden] { display: none !important; }
 :root {
-  --bg: #e2e5ea; --card: #fff; --text: #1d2330; --muted: #6b7280; --line: #e3e6eb;
+  --bg: #ffffff; --card: #fff; --text: #1d2330; --muted: #6b7280; --line: #e3e6eb;
   --accent: #2563eb; --accent-text: #fff; --danger: #dc2626;
   --st-in: #0f766e; --st-listed: #b45309; --st-sold: #6b7280;
   --plus: #15803d; --minus: #dc2626;
