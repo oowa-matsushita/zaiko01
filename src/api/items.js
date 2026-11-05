@@ -6,6 +6,9 @@ const SORTS = {
   updated_desc: 'updated_at DESC, id DESC',
   price_desc: 'purchase_price DESC, id DESC',
   mileage_asc: 'mileage IS NULL, mileage ASC, id DESC',
+  mileage_desc: 'mileage IS NULL, mileage DESC, id DESC',
+  created_desc: 'id DESC',
+  created_asc: 'id ASC',
 };
 
 // GET /api/items?q=&status=&from=&to=&sort=&limit=&offset=
@@ -26,7 +29,7 @@ export async function onRequestGet({ request, env }) {
   const to = p.get('to');
   if (to) { where.push(`purchase_date <= ?${args.length + 1}`); args.push(to); }
 
-  const order = SORTS[p.get('sort')] || SORTS.purchase_date_desc;
+  const order = SORTS[p.get('sort')] || SORTS.created_desc;
   const limit = Math.min(Math.max(parseInt(p.get('limit') || '200', 10) || 200, 1), 1000);
   const offset = Math.max(parseInt(p.get('offset') || '0', 10) || 0, 0);
   const w = where.length ? `WHERE ${where.join(' AND ')}` : '';

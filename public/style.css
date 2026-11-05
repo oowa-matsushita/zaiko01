@@ -1,6 +1,6 @@
 [hidden] { display: none !important; }
 :root {
-  --bg: #f6f7f9; --card: #fff; --text: #1d2330; --muted: #6b7280; --line: #e3e6eb;
+  --bg: #e2e5ea; --card: #fff; --text: #1d2330; --muted: #6b7280; --line: #e3e6eb;
   --accent: #2563eb; --accent-text: #fff; --danger: #dc2626;
   --st-in: #0f766e; --st-listed: #b45309; --st-sold: #6b7280;
   --plus: #15803d; --minus: #dc2626;
@@ -52,7 +52,7 @@ input, select, textarea {
 .item:hover { border-color: var(--accent); }
 .item .name { font-weight: 600; overflow-wrap: anywhere; }
 .item .meta { font-size: .85rem; color: var(--muted); overflow-wrap: anywhere; }
-.item .right { text-align: right; font-variant-numeric: tabular-nums; }
+.item .right { max-width: 45vw; text-align: right; font-variant-numeric: tabular-nums; }
 .item .price { font-weight: 600; }
 .badge { display: inline-block; font-size: .75rem; padding: 1px 8px; border-radius: 99px; border: 1px solid currentColor; margin-right: 6px; }
 .badge.in_stock { color: var(--st-in); } .badge.listed { color: var(--st-listed); } .badge.sold { color: var(--st-sold); }

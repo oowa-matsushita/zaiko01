@@ -13,23 +13,14 @@
     <button id="btn-add" class="primary">＋ 買取登録</button>
   </header>
 
-  <section id="stats" class="stats" aria-label="集計"></section>
-
   <section class="filters">
-    <input id="q" type="search" placeholder="車名・車台番号・色・仕入先などで検索">
-    <div class="tabs" role="tablist">
-      <button data-status="" class="active">すべて</button>
-      <button data-status="in_stock">在庫</button>
-      <button data-status="listed">出品中</button>
-      <button data-status="sold">売却済</button>
-    </div>
+    <input id="q" type="search" placeholder="車名・車台番号・色・セールスポイントなどで検索">
     <div class="row">
       <select id="sort" aria-label="並び順">
-        <option value="purchase_date_desc">買取日が新しい順</option>
-        <option value="purchase_date_asc">買取日が古い順</option>
-        <option value="updated_desc">更新が新しい順</option>
-        <option value="price_desc">買取価格が高い順</option>
+        <option value="created_desc">登録が新しい順</option>
+        <option value="created_asc">登録が古い順</option>
         <option value="mileage_asc">走行距離が少ない順</option>
+        <option value="mileage_desc">走行距離が多い順</option>
       </select>
       <button id="btn-csv">CSV出力</button>
     </div>
@@ -61,25 +52,6 @@
         <label class="check"><input type="checkbox" name="has_warranty"> 保証書あり</label>
         <label class="check"><input type="checkbox" name="has_manual"> 取扱説明書あり</label>
       </div>
-      <label>買取日<input name="purchase_date" type="date"></label>
-      <label>買取価格(円)<input name="purchase_price" type="number" inputmode="numeric" min="0"></label>
-      <label>仕入先・買取元<input name="supplier" list="dl-supplier"></label>
-      <label>保管場所<input name="location" list="dl-location"></label>
-      <label>販売予定価格(円)<input name="list_price" type="number" inputmode="numeric" min="0"></label>
-      <label>ステータス
-        <select name="status">
-          <option value="in_stock">在庫</option>
-          <option value="listed">出品中</option>
-          <option value="sold">売却済</option>
-        </select>
-      </label>
-      <fieldset class="full sold-fields">
-        <legend>販売情報</legend>
-        <label>販売日<input name="sold_date" type="date"></label>
-        <label>販売価格(円)<input name="sold_price" type="number" inputmode="numeric" min="0"></label>
-        <label>手数料・送料(円)<input name="fees" type="number" inputmode="numeric" min="0"></label>
-        <p class="profit-preview muted full"></p>
-      </fieldset>
       <label class="full">メモ<textarea name="notes" rows="3"></textarea></label>
       <p id="form-error" class="error full" role="alert"></p>
       <div class="actions full">
@@ -91,8 +63,6 @@
     </form>
   </dialog>
   <datalist id="dl-color"></datalist>
-  <datalist id="dl-supplier"></datalist>
-  <datalist id="dl-location"></datalist>
 
   <script src="/app.js" type="module"></script>
 </body>
