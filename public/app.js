@@ -21,6 +21,7 @@ const state = { q: '', event_date: '', shipped_date: '', items: [] };
 async function api(path, opts = {}) {
   const res = await fetch(path, { ...opts, headers: { 'content-type': 'application/json', ...(opts.headers || {}) } });
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && data.login) { location.href = '/login'; throw new Error('ログインしてください'); }
   if (!res.ok) throw new Error(data.error || `エラー (${res.status})`);
   return data;
 }

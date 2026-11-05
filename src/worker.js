@@ -1,10 +1,11 @@
-// Cloudflare Workers のエントリ。/api/* をここで処理し、それ以外は public/ の静的ファイルを返す
+// Cloudflare Workers のエントリ。ログインを確認し、/api/* をここで処理、それ以外は public/ の静的ファイルを返す
 import * as items from './api/items.js';
 import * as item from './api/item.js';
 import * as stats from './api/stats.js';
 import * as dateCounts from './api/date_counts.js';
 import * as ocrPlate from './api/ocr_plate.js';
 import { json, ensureSchema } from './lib.js';
+import { isLoggedIn, handleLogin, handleLogout, loginPage } from './auth.js';
 
 const ROUTES = [
   [/^\/api\/items\/?$/, items],
@@ -18,12 +19,33 @@ const METHOD = { GET: 'onRequestGet', POST: 'onRequestPost', PUT: 'onRequestPut'
 export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);
-    if (!pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
 
-    // 外部ツール (Claude など) 用: API_TOKEN を設定した場合は Bearer トークンでも利用可
+    // ---- ログイン ----
+    if (pathname === '/login') {
+      return (await isLoggedIn(request, env)) ? Response.redirect(new URL('/', request.url), 303) : loginPage(env);
+    }
+    if (pathname === '/api/login' && request.method === 'POST') {
+      try { return await handleLogin(request, env); } catch (e) { return json({ error: 'サーバーエラー: ' + e.message }, 500); }
+    }
+    if (pathname === '/logout') return handleLogout();
+
+    // 外部ツール (Claude など) 用: API_TOKEN を設定した場合は Bearer トークンでも API を利用可
     const auth = request.headers.get('authorization') || '';
-    if (auth.startsWith('Bearer ') && !(env.API_TOKEN && auth === `Bearer ${env.API_TOKEN}`)) {
-      return json({ error: 'トークンが正しくありません' }, 401);
+    const bearerOk = !!env.API_TOKEN && auth === `Bearer ${env.API_TOKEN}` && pathname.startsWith('/api/');
+    if (auth.startsWith('Bearer ') && !bearerOk) return json({ error: 'トークンが正しくありません' }, 401);
+
+    if (!bearerOk && !(await isLoggedIn(request, env))) {
+      if (pathname.startsWith('/api/')) return json({ error: 'ログインしてください', login: true }, 401);
+      return Response.redirect(new URL('/login', request.url), 303);
+    }
+
+    if (!pathname.startsWith('/api/')) {
+      const res = await env.ASSETS.fetch(request);
+      // ログインが必要なページはキャッシュさせない
+      const h = new Headers(res.headers);
+      h.set('cache-control', 'no-store');
+      h.set('x-frame-options', 'DENY');
+      return new Response(res.body, { status: res.status, headers: h });
     }
 
     for (const [re, mod] of ROUTES) {

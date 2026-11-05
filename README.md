@@ -39,14 +39,23 @@ D1 の「概要」に表示されるデータベース ID を `wrangler.toml` �
 ダッシュボード → **Workers & Pages → 作成 → GitHub からインポート** → `zaiko01` を選択（ビルド設定は既定のまま、デプロイコマンド `npx wrangler deploy`）。
 push するたびに自動でデプロイされます。
 
-### 4. 自分だけがアクセスできるようにする（重要）
-Worker の **Access** タブ → Cloudflare Access を有効化し、ポリシーで自分のメールアドレスだけを許可します。
+### 4. ログイン（ID・パスワード）を設定する（重要）
+Worker の **設定 → 変数とシークレット → 追加** で、種類「シークレット」として次の3つを登録します。
+| 名前 | 内容 |
+|---|---|
+| `LOGIN_ID` | ログインID |
+| `LOGIN_PASSWORD` | パスワード（12文字以上・推測されにくいもの） |
+| `SESSION_SECRET` | ランダムな32文字以上の文字列（ログイン状態の署名用。変えると全員ログアウト） |
+
+- 未設定の間はログイン画面に「設定が完了していません」と表示され、誰も入れません。
+- 同じ場所から15分に5回失敗すると15分ロック、全体で15分に30回失敗しても15分ロックします。
+- ログインは30日間有効です。
 
 ## ローカルで動かす
 ```bash
 npm install
 npm run db:migrate:local
-npm run dev     # http://localhost:8787
+npm run dev     # http://localhost:8787（.dev.vars に LOGIN_ID など3つを書く）
 ```
 
 ## API（Claude などからの連携用）

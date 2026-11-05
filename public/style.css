@@ -188,3 +188,5 @@ input[type=date] { cursor: pointer; }
 .scan-result p.ng { color: var(--danger); }
 #form input.filled { background: #fff7d6; border-color: #e0b100; }
 @media (prefers-color-scheme: dark) { #form input.filled { background: #3a3215; } }
+.top-actions { display: flex; align-items: center; gap: 12px; }
+.logout { color: var(--muted); font-size: .85rem; }
