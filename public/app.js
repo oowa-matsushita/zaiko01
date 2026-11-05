@@ -514,3 +514,79 @@ reqMenu.addEventListener('click', (e) => {
   if (b.dataset.req === 'mail') openMailWindow(items);
   else openPdfWindow(items);
 });
+
+// ---- 音声入力（セールスポイント） ----
+// ブラウザ内蔵の音声認識（Chrome / Android、iPhone の Safari などで利用可）
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+let recBtn = null;
+
+function stopVoice() {
+  if (rec) { try { rec.stop(); } catch { /* 停止済み */ } }
+}
+
+function startVoice(btn) {
+  const ta = document.getElementById(btn.dataset.target);
+  const status = btn.closest('.field-voice').querySelector('.voice-status');
+  rec = new SpeechRec();
+  rec.lang = 'ja-JP';
+  rec.interimResults = true;
+  rec.continuous = true;
+  recBtn = btn;
+  let base = ta.value;
+
+  rec.onstart = () => {
+    btn.setAttribute('aria-pressed', 'true');
+    btn.textContent = '■ 停止';
+    status.textContent = '聞き取り中…話し終わったら「停止」を押してください';
+  };
+  rec.onresult = (e) => {
+    let finalText = '', interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const r = e.results[i];
+      if (r.isFinal) finalText += r[0].transcript; else interim += r[0].transcript;
+    }
+    if (finalText) {
+      const sep = base && !/[、。\s]$/.test(base) ? '、' : '';
+      base = base + sep + finalText.trim();
+      ta.value = base;
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    status.innerHTML = interim ? `<span class="interim">${esc(interim)}</span>` : '聞き取り中…';
+  };
+  rec.onerror = (e) => {
+    const msg = {
+      'not-allowed': 'マイクの使用が許可されていません。ブラウザの設定でマイクを許可してください',
+      'service-not-allowed': 'マイクの使用が許可されていません。ブラウザの設定でマイクを許可してください',
+      'no-speech': '音声が聞き取れませんでした。もう一度お試しください',
+      'audio-capture': 'マイクが見つかりません',
+      'network': '通信エラーで音声認識できませんでした',
+    }[e.error] || `音声入力エラー（${e.error}）`;
+    status.textContent = msg;
+  };
+  rec.onend = () => {
+    btn.setAttribute('aria-pressed', 'false');
+    btn.textContent = '🎤 音声入力';
+    if (status.textContent.startsWith('聞き取り中') || status.querySelector('.interim')) status.textContent = '';
+    rec = null; recBtn = null;
+  };
+  try { rec.start(); } catch (err) { status.textContent = '音声入力を開始できませんでした'; }
+}
+
+document.querySelectorAll('.mic').forEach((btn) => {
+  if (!SpeechRec) {
+    btn.addEventListener('click', () => {
+      btn.closest('.field-voice').querySelector('.voice-status').textContent =
+        'このブラウザは音声入力に対応していません。キーボードのマイクボタンをお使いください';
+    });
+    return;
+  }
+  btn.addEventListener('click', () => {
+    if (rec && recBtn === btn) stopVoice(); else { stopVoice(); startVoice(btn); }
+  });
+});
+// フォームを閉じたら音声入力も止める
+dlg.addEventListener('close', () => {
+  stopVoice();
+  document.querySelectorAll('.voice-status').forEach((s) => { s.textContent = ''; });
+});

@@ -167,3 +167,11 @@ input[type=date] { cursor: pointer; }
 .menu button:hover { background: var(--hover); }
 .menu button + button { border-top: 1px solid var(--line); }
 .row { flex-wrap: wrap; }
+.field-voice { display: grid; gap: 4px; }
+.voice-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.voice-head label { font-size: .85rem; color: var(--muted); }
+.mic { padding: 8px 14px; border-radius: 99px; font-size: .95rem; border-color: var(--accent); color: var(--accent); }
+.mic[aria-pressed="true"] { background: var(--danger); border-color: var(--danger); color: #fff; animation: pulse 1.2s infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 6px rgb(220 38 38 / .25); } }
+.voice-status { min-height: 1.2em; font-size: .8rem; }
+.voice-status .interim { color: var(--text); opacity: .7; }
