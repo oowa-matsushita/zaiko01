@@ -1,5 +1,10 @@
 const $ = (s) => document.querySelector(s);
 const yen = (n) => (n == null ? '-' : '¥' + Number(n).toLocaleString('ja-JP'));
+const KM_PER_MILE = 1.609344;
+const fmtMileage = (it) => it.mileage == null ? null
+  : it.mileage_unit === 'mile'
+    ? `${it.mileage.toLocaleString('ja-JP')}マイル（約${Math.round(it.mileage * KM_PER_MILE).toLocaleString('ja-JP')}km）`
+    : `${it.mileage.toLocaleString('ja-JP')}km`;
 const STATUS_LABEL = { in_stock: '在庫', listed: '出品中', sold: '売却済' };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
@@ -31,14 +36,16 @@ async function load() {
 }
 
 function render({ items, total }) {
-  $('#count').textContent = `${total} 件`;
+  $('#count').textContent = `${total} 台`;
   if (!items.length) {
     $('#list').innerHTML = '<li class="empty">該当する在庫がありません</li>';
     return;
   }
   $('#list').innerHTML = items.map((it) => {
-    const meta = [it.model_no, it.condition_rank && `ランク${it.condition_rank}`, it.location && `📦${it.location}`, it.supplier]
+    const color = [it.color, it.color_code && `(${it.color_code})`].filter(Boolean).join(' ');
+    const meta = [it.chassis_no, color, fmtMileage(it), it.location && `📍${it.location}`, it.supplier]
       .filter(Boolean).map(esc).join(' ・ ');
+    const tags = (it.has_warranty ? '<span class="tag">保証書</span>' : '') + (it.has_manual ? '<span class="tag">取説</span>' : '');
     const days = it.status !== 'sold' && it.purchase_date
       ? Math.floor((Date.parse(today()) - Date.parse(it.purchase_date)) / 864e5) : null;
     const profit = it.profit != null
@@ -48,8 +55,10 @@ function render({ items, total }) {
         <button data-act="sold" data-id="${it.id}">売却</button></div>`;
     return `<li class="item" data-id="${it.id}">
       <div>
-        <div class="name"><span class="badge ${it.status}">${STATUS_LABEL[it.status]}</span>${esc(it.name)}${it.quantity > 1 ? ` ×${it.quantity}` : ''}</div>
+        <div class="name"><span class="badge ${it.status}">${STATUS_LABEL[it.status]}</span>${esc(it.name)}</div>
         <div class="meta">${meta || '&nbsp;'}</div>
+        ${it.sales_points ? `<div class="points">${esc(it.sales_points)}</div>` : ''}
+        ${tags ? `<div>${tags}</div>` : ''}
         <div class="meta">買取 ${esc(it.purchase_date || '日付なし')}${days != null ? `（${days}日経過）` : ''}${it.sold_date ? ` → 売却 ${esc(it.sold_date)}` : ''}</div>
       </div>
       <div class="right">
@@ -71,10 +80,10 @@ async function loadStats() {
     const stockCount = (by.in_stock?.count || 0) + (by.listed?.count || 0);
     const stockValue = (by.in_stock?.purchase_total || 0) + (by.listed?.purchase_total || 0);
     $('#stats').innerHTML = [
-      ['在庫（出品中含む）', `${stockCount} 件`],
+      ['在庫（出品中含む）', `${stockCount} 台`],
       ['在庫の買取総額', yen(stockValue)],
-      ['今月の買取', `${yen(p.purchase_total)}（${p.count}件）`],
-      ['今月の売上', `${yen(m.sales)}（${m.sold_count}件）`],
+      ['今月の買取', `${yen(p.purchase_total)}（${p.count}台）`],
+      ['今月の売上', `${yen(m.sales)}（${m.sold_count}台）`],
       ['今月の利益', yen(m.profit)],
     ].map(([l, v]) => `<div class="stat"><div class="label">${l}</div><div class="value">${v}</div></div>`).join('');
   } catch { /* 集計は失敗しても一覧は表示する */ }
@@ -82,7 +91,7 @@ async function loadStats() {
 }
 
 function fillSuggestions() {
-  for (const f of ['category', 'supplier', 'location']) {
+  for (const f of ['color', 'supplier', 'location']) {
     const vals = [...new Set(state.items.map((i) => i[f]).filter(Boolean))].sort();
     $(`#dl-${f}`).innerHTML = vals.map((v) => `<option value="${esc(v)}">`).join('');
   }
@@ -95,11 +104,13 @@ const form = $('#form');
 function openForm(item) {
   form.reset();
   $('#form-error').textContent = '';
-  $('#dlg-title').textContent = item ? '在庫を編集' : '買取登録';
+  $('#dlg-title').textContent = item?.id ? '在庫を編集' : '買取登録';
   $('#btn-delete').hidden = !item;
-  const data = item || { purchase_date: today(), quantity: 1, status: 'in_stock' };
+  const data = item || { purchase_date: today(), status: 'in_stock', mileage_unit: 'km' };
   for (const el of form.elements) {
-    if (el.name && el.name in data) el.value = data[el.name] ?? '';
+    if (!el.name || !(el.name in data)) continue;
+    if (el.type === 'checkbox') el.checked = !!data[el.name];
+    else el.value = data[el.name] ?? '';
   }
   if (!item) form.elements.id.value = '';
   updateSoldFields();
@@ -108,6 +119,9 @@ function openForm(item) {
 }
 
 function updateSoldFields() {
+  const mv = form.elements.mileage.value;
+  $('.mileage-conv').textContent = mv !== '' && form.elements.mileage_unit.value === 'mile'
+    ? `約 ${Math.round(Number(mv) * KM_PER_MILE).toLocaleString('ja-JP')} km` : '';
   const sold = form.elements.status.value === 'sold';
   $('.sold-fields').hidden = !sold;
   if (sold && !form.elements.sold_date.value) form.elements.sold_date.value = today();
@@ -118,11 +132,15 @@ function updateSoldFields() {
     ? `利益見込み：${yen(sp - pp - fee)}` : '';
 }
 form.addEventListener('input', updateSoldFields);
+form.addEventListener('change', updateSoldFields);
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const body = {};
-  for (const el of form.elements) if (el.name && el.name !== 'id') body[el.name] = el.value;
+  for (const el of form.elements) {
+    if (!el.name || el.name === 'id') continue;
+    body[el.name] = el.type === 'checkbox' ? el.checked : el.value;
+  }
   if (body.status !== 'sold') { body.sold_date = ''; body.sold_price = ''; }
   const id = form.elements.id.value;
   try {
@@ -175,13 +193,16 @@ $('#sort').addEventListener('change', (e) => { state.sort = e.target.value; load
 
 // ---- CSV出力（表示中の一覧） ----
 $('#btn-csv').addEventListener('click', () => {
-  const cols = [['id', 'ID'], ['name', '品名'], ['model_no', '型番・JAN'], ['category', 'カテゴリ'], ['condition_rank', '状態'],
-    ['quantity', '数量'], ['purchase_date', '買取日'], ['purchase_price', '買取価格'], ['supplier', '仕入先'],
+  const cols = [['id', 'ID'], ['name', '車名'], ['chassis_no', '車台番号'], ['color', '色'], ['color_code', 'カラーコード'],
+    ['mileage', '走行距離'], ['mileage_unit', '距離単位'], ['sales_points', 'セールスポイント'],
+    ['has_warranty', '保証書'], ['has_manual', '取説'], ['purchase_date', '買取日'], ['purchase_price', '買取価格'], ['supplier', '仕入先'],
     ['location', '保管場所'], ['list_price', '販売予定価格'], ['status', 'ステータス'], ['sold_date', '販売日'],
     ['sold_price', '販売価格'], ['fees', '手数料'], ['profit', '利益'], ['notes', 'メモ']];
   const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const lines = [cols.map((c) => cell(c[1])).join(',')].concat(state.items.map((it) =>
-    cols.map(([k]) => cell(k === 'status' ? STATUS_LABEL[it[k]] : it[k])).join(',')));
+    cols.map(([k]) => cell(k === 'status' ? STATUS_LABEL[it[k]]
+      : k === 'has_warranty' || k === 'has_manual' ? (it[k] ? 'あり' : 'なし')
+      : k === 'mileage_unit' ? (it[k] === 'mile' ? 'マイル' : 'km') : it[k])).join(',')));
   const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv' });
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `zaiko_${today()}.csv` });
   a.click();

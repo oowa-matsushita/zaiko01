@@ -5,6 +5,7 @@ const SORTS = {
   purchase_date_asc: 'purchase_date ASC, id ASC',
   updated_desc: 'updated_at DESC, id DESC',
   price_desc: 'purchase_price DESC, id DESC',
+  mileage_asc: 'mileage IS NULL, mileage ASC, id DESC',
 };
 
 // GET /api/items?q=&status=&from=&to=&sort=&limit=&offset=
@@ -14,7 +15,7 @@ export async function onRequestGet({ request, env }) {
   const args = [];
   const q = p.get('q');
   if (q) {
-    where.push(`(name LIKE ?1 OR model_no LIKE ?1 OR category LIKE ?1 OR supplier LIKE ?1 OR location LIKE ?1 OR notes LIKE ?1)`
+    where.push(`(name LIKE ?1 OR chassis_no LIKE ?1 OR color LIKE ?1 OR color_code LIKE ?1 OR sales_points LIKE ?1 OR model_no LIKE ?1 OR category LIKE ?1 OR supplier LIKE ?1 OR location LIKE ?1 OR notes LIKE ?1)`
       .replaceAll('?1', `?${args.length + 1}`));
     args.push(`%${q}%`);
   }

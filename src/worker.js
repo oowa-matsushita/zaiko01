@@ -2,7 +2,7 @@
 import * as items from './api/items.js';
 import * as item from './api/item.js';
 import * as stats from './api/stats.js';
-import { json } from './lib.js';
+import { json, ensureSchema } from './lib.js';
 
 const ROUTES = [
   [/^\/api\/items\/?$/, items],
@@ -28,6 +28,7 @@ export default {
       const handler = mod[METHOD[request.method]];
       if (!handler) return json({ error: 'このメソッドは使えません' }, 405);
       try {
+        await ensureSchema(env.DB);
         return await handler({ request, env, params: m.groups || {} });
       } catch (e) {
         return json({ error: 'サーバーエラー: ' + e.message }, 500);

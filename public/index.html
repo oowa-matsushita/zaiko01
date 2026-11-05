@@ -4,19 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title>買取在庫管理</title>
+  <title>中古車 買取在庫管理</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <header class="top">
-    <h1>買取在庫管理</h1>
+    <h1>中古車 買取在庫</h1>
     <button id="btn-add" class="primary">＋ 買取登録</button>
   </header>
 
   <section id="stats" class="stats" aria-label="集計"></section>
 
   <section class="filters">
-    <input id="q" type="search" placeholder="品名・型番・仕入先・保管場所で検索">
+    <input id="q" type="search" placeholder="車名・車台番号・色・仕入先などで検索">
     <div class="tabs" role="tablist">
       <button data-status="" class="active">すべて</button>
       <button data-status="in_stock">在庫</button>
@@ -29,6 +29,7 @@
         <option value="purchase_date_asc">買取日が古い順</option>
         <option value="updated_desc">更新が新しい順</option>
         <option value="price_desc">買取価格が高い順</option>
+        <option value="mileage_asc">走行距離が少ない順</option>
       </select>
       <button id="btn-csv">CSV出力</button>
     </div>
@@ -41,16 +42,25 @@
     <form id="form" method="dialog">
       <h2 id="dlg-title">買取登録</h2>
       <input type="hidden" name="id">
-      <label class="full">品名 *<input name="name" required></label>
-      <label>型番・JAN<input name="model_no"></label>
-      <label>カテゴリ<input name="category" list="dl-category"></label>
-      <label>状態ランク
-        <select name="condition_rank">
-          <option value=""></option><option>S</option><option>A</option><option>B</option>
-          <option>C</option><option>D</option><option>J</option>
-        </select>
+      <label class="full">車名 *<input name="name" required placeholder="例：トヨタ プリウス S"></label>
+      <label class="full">車台番号<input name="chassis_no" autocapitalize="characters" placeholder="例：ZVW30-1234567"></label>
+      <label>色<input name="color" list="dl-color" placeholder="例：パールホワイト"></label>
+      <label>カラーコード<input name="color_code" autocapitalize="characters" placeholder="例：070"></label>
+      <label class="full">走行距離
+        <span class="with-unit">
+          <input name="mileage" type="number" inputmode="numeric" min="0" placeholder="例：45000">
+          <select name="mileage_unit" aria-label="距離の単位">
+            <option value="km">km</option>
+            <option value="mile">マイル</option>
+          </select>
+        </span>
+        <small class="mileage-conv"></small>
       </label>
-      <label>数量<input name="quantity" type="number" min="1" value="1"></label>
+      <label class="full">セールスポイント<textarea name="sales_points" rows="3" placeholder="例：ワンオーナー、禁煙車、記録簿あり、スタッドレス付き"></textarea></label>
+      <div class="full checks">
+        <label class="check"><input type="checkbox" name="has_warranty"> 保証書あり</label>
+        <label class="check"><input type="checkbox" name="has_manual"> 取扱説明書あり</label>
+      </div>
       <label>買取日<input name="purchase_date" type="date"></label>
       <label>買取価格(円)<input name="purchase_price" type="number" inputmode="numeric" min="0"></label>
       <label>仕入先・買取元<input name="supplier" list="dl-supplier"></label>
@@ -80,7 +90,7 @@
       </div>
     </form>
   </dialog>
-  <datalist id="dl-category"></datalist>
+  <datalist id="dl-color"></datalist>
   <datalist id="dl-supplier"></datalist>
   <datalist id="dl-location"></datalist>
 
