@@ -92,8 +92,8 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 4px; }
   margin-top: 12px; overflow: auto; max-height: calc(100vh - 190px);
   background: var(--card); border: 1px solid var(--tline); border-radius: 8px;
 }
-:root { --tline: #c9ced6; --thead: #f0f2f5; --zebra: #f8f9fb; --hover: #e8f0fe; }
-@media (prefers-color-scheme: dark) { :root { --tline: #3a414d; --thead: #232934; --zebra: #1f242d; --hover: #263247; } }
+:root { --tline: #c9ced6; --thead: #e9ecf1; --zebra: #eef2f7; --hover: #e1ebfd; --sep: #7b8494; }
+@media (prefers-color-scheme: dark) { :root { --tline: #3a414d; --thead: #232934; --zebra: #222833; --hover: #263247; --sep: #8a93a3; } }
 #tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: .9rem; }
 #tbl th, #tbl td {
   border-right: 1px solid var(--tline); border-bottom: 1px solid var(--tline);
@@ -112,8 +112,12 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 4px; }
 #tbl td.editable { cursor: cell; }
 #tbl tbody.vehicle:nth-of-type(even) { background: var(--zebra); }
 #tbl tbody.vehicle:hover { background: var(--hover); }
-#tbl tbody.vehicle tr.last td, #tbl tbody.vehicle td.rowno { border-bottom: 2px solid var(--tline); }
-#tbl thead tr:last-child th, #tbl thead th[rowspan] { border-bottom: 2px solid var(--tline); }
+/* 車両ごとの境目：濃い太線。2段表示の上下の間は点線 */
+#tbl tbody.vehicle tr.last td, #tbl tbody.vehicle td.rowno { border-bottom: 3px solid var(--sep); }
+#tbl tbody.vehicle tr:not(.last) td:not(.rowno) { border-bottom: 1px dashed var(--tline); }
+#tbl thead tr:last-child th, #tbl thead th[rowspan] { border-bottom: 3px solid var(--sep); }
+#tbl tbody.vehicle td.rowno { font-weight: 700; color: var(--text); vertical-align: middle; }
+#tbl tbody.vehicle td[data-key="name"] { font-weight: 600; }
 #tbl thead th.sub { font-weight: 500; }
 #tbl td.num { text-align: right; font-variant-numeric: tabular-nums; }
 #tbl td.center, #tbl th.center { text-align: center; }
