@@ -3,7 +3,7 @@
 export const FIELDS = [
   'name', 'chassis_no', 'color', 'color_code', 'mileage', 'mileage_unit',
   'sales_points', 'has_warranty', 'has_manual',
-  'own_date', 'venue', 'event_date', 'shipped_date',
+  'own_company', 'own_date', 'venue', 'event_date', 'shipped_date',
   'model_no', 'category', 'condition_rank', 'quantity',
   'purchase_date', 'purchase_price', 'supplier', 'location', 'list_price',
   'status', 'sold_date', 'sold_price', 'fees', 'notes',
@@ -24,7 +24,8 @@ const ADDED_COLUMNS = {
   sales_points: 'TEXT',
   has_warranty: 'INTEGER NOT NULL DEFAULT 0',
   has_manual: 'INTEGER NOT NULL DEFAULT 0',
-  own_date: 'TEXT',      // 自社（日付）
+  own_date: 'TEXT',      // 旧「自社」（日付）。画面では未使用
+  own_company: 'TEXT',   // 自社名
   venue: 'TEXT',         // 会場
   event_date: 'TEXT',    // 開催日
   shipped_date: 'TEXT',  // 出庫日

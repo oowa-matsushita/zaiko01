@@ -28,7 +28,8 @@
       <tbody id="list"></tbody>
     </table>
   </div>
-  <p class="muted hint">列名をタップすると並び替え、行をタップすると編集できます</p>
+  <p class="muted hint">セルをダブルクリック（ダブルタップ）でその場で編集、Enterで保存・Escで取消。✎ でフォーム編集・削除。列名で並び替え。</p>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <dialog id="dlg">
     <form id="form" method="dialog">
@@ -48,7 +49,7 @@
         </span>
         <small class="mileage-conv"></small>
       </label>
-      <label>自社<input name="own_date" type="date"></label>
+      <label>自社名<input name="own_company" list="dl-company" placeholder="例：〇〇自動車"></label>
       <label>会場
         <select name="venue">
           <option value="">未選択</option>
@@ -75,6 +76,7 @@
     </form>
   </dialog>
   <datalist id="dl-color"></datalist>
+  <datalist id="dl-company"></datalist>
 
   <script src="/app.js" type="module"></script>
 </body>

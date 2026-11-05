@@ -107,7 +107,8 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 4px; }
 #tbl thead th .arrow { color: var(--muted); font-size: .75rem; margin-left: 2px; }
 #tbl th.sticky, #tbl td.sticky { position: sticky; left: 0; z-index: 1; background: inherit; }
 #tbl thead th.sticky { z-index: 3; background: var(--thead); }
-#tbl tbody tr { background: var(--card); cursor: pointer; }
+#tbl tbody tr { background: var(--card); }
+#tbl td.editable { cursor: cell; }
 #tbl tbody tr:nth-child(even) { background: var(--zebra); }
 #tbl tbody tr:hover { background: var(--hover); }
 #tbl td.num { text-align: right; font-variant-numeric: tabular-nums; }
@@ -117,3 +118,17 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 4px; }
 #tbl .empty { white-space: normal; cursor: default; }
 .hint { font-size: .8rem; margin: 6px 0 0; }
 #tbl td.date { font-variant-numeric: tabular-nums; }
+#tbl td.editing { padding: 2px; background: var(--card); outline: 2px solid var(--accent); outline-offset: -2px; }
+#tbl td.editing input, #tbl td.editing select, #tbl td.editing textarea { padding: 4px 6px; border-radius: 4px; min-width: 120px; }
+#tbl td.editing input[type=number] { min-width: 90px; }
+#tbl td.editing textarea { min-width: 240px; }
+#tbl td.editing .with-unit { gap: 4px; }
+.edit-btn { border: 0; background: none; padding: 0 6px 0 0; color: var(--accent); font-size: 1rem; }
+#tbl td.rowno { white-space: nowrap; }
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+  background: var(--text); color: var(--bg); padding: 8px 16px; border-radius: 8px; transition: .2s; z-index: 10; max-width: calc(100% - 32px);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.error { background: var(--danger); color: #fff; }
+input[type=date] { cursor: pointer; }

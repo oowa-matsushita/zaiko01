@@ -45,7 +45,7 @@ const COLS = [
   ['color', '色'],
   ['color_code', 'カラーコード'],
   ['mileage', '走行距離', 'num'],
-  ['own_date', '自社', 'date'],
+  ['own_company', '自社名'],
   ['venue', '会場', 'center'],
   ['event_date', '開催日', 'date'],
   ['shipped_date', '出庫日', 'date'],
@@ -65,7 +65,7 @@ const cellHtml = (it, k) => {
     case 'mileage': return esc(fmtMileage(it) ?? '');
     case 'has_warranty': case 'has_manual': return it[k] ? '✓' : '';
     case 'created_at': return esc(jstDate(it.created_at));
-    case 'own_date': case 'event_date': case 'shipped_date': return esc(mdDate(it[k]));
+    case 'event_date': case 'shipped_date': return esc(mdDate(it[k]));
     default: return esc(it[k] ?? '');
   }
 };
@@ -79,8 +79,10 @@ function renderHead() {
 
 function render({ total }) {
   $('#count').textContent = `${total} 台`;
-  const colors = [...new Set(state.items.map((i) => i.color).filter(Boolean))].sort();
-  $('#dl-color').innerHTML = colors.map((v) => `<option value="${esc(v)}">`).join('');
+  for (const [k, id] of [['color', '#dl-color'], ['own_company', '#dl-company']]) {
+    const vals = [...new Set(state.items.map((i) => i[k]).filter(Boolean))].sort();
+    $(id).innerHTML = vals.map((v) => `<option value="${esc(v)}">`).join('');
+  }
   renderHead();
   if (!state.items.length) {
     $('#list').innerHTML = `<tr><td class="empty" colspan="${COLS.length}">${state.q ? '該当する車両がありません' : 'まだ登録がありません。「＋ 買取登録」から追加してください'}</td></tr>`;
@@ -94,7 +96,9 @@ function render({ total }) {
     return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'ja')) * dir;
   });
   $('#list').innerHTML = rows.map((it) => `<tr data-id="${it.id}">${
-    COLS.map(([k, , cls]) => `<td class="${cls || ''}">${cellHtml(it, k)}</td>`).join('')
+    COLS.map(([k, , cls]) => k === 'id'
+      ? `<td class="rowno"><button class="edit-btn" data-open="${it.id}" title="フォームで編集" aria-label="フォームで編集">✎</button>${it.id}</td>`
+      : `<td class="${cls || ''}${EDITABLE.has(k) ? ' editable' : ''}" data-key="${k}">${cellHtml(it, k)}</td>`).join('')
   }</tr>`).join('');
 }
 
@@ -162,9 +166,120 @@ $('#btn-delete').addEventListener('click', async () => {
 });
 $('#btn-add').addEventListener('click', () => openForm(null));
 
+// 日付欄はクリックでカレンダーを開く
+function openPicker(input) {
+  try { input.showPicker(); } catch { /* 未対応ブラウザは標準の動作 */ }
+}
+document.addEventListener('click', (e) => {
+  if (e.target.matches?.('input[type=date]')) openPicker(e.target);
+});
+
+// ---- 一覧での直接編集（ダブルクリック／ダブルタップ） ----
+const EDITABLE = new Set(['name', 'chassis_no', 'color', 'color_code', 'mileage', 'own_company', 'venue',
+  'event_date', 'shipped_date', 'sales_points', 'has_warranty', 'has_manual', 'notes']);
+const DATE_KEYS = new Set(['event_date', 'shipped_date']);
+const VENUES = ['名古屋', '静岡', '廃車'];
+let editing = null; // { td, item, key }
+
+function toast(msg, isError = false) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { t.className = 'toast'; }, 2500);
+}
+
+async function saveField(item, patch) {
+  try {
+    const row = await api(`/api/items/${item.id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+    Object.assign(item, row);
+    toast('保存しました');
+  } catch (err) {
+    toast(err.message, true);
+  }
+}
+
+function finishEdit(save) {
+  if (!editing) return;
+  const { td, item, key, read } = editing;
+  editing = null;
+  const patch = save ? read() : null;
+  const changed = patch && Object.keys(patch).some((k) => String(patch[k] ?? '') !== String(item[k] ?? ''));
+  const done = changed ? saveField(item, patch) : Promise.resolve();
+  done.then(() => {
+    td.classList.remove('editing');
+    td.innerHTML = cellHtml(item, key);
+  });
+}
+
+function startEdit(td) {
+  if (editing) finishEdit(true);
+  const key = td.dataset.key;
+  const item = state.items.find((i) => i.id == td.parentElement.dataset.id);
+  if (!item || !EDITABLE.has(key)) return;
+
+  // 保証書・取説はダブルクリックで あり／なし を切り替え
+  if (key === 'has_warranty' || key === 'has_manual') {
+    saveField(item, { [key]: !item[key] }).then(() => { td.innerHTML = cellHtml(item, key); });
+    return;
+  }
+
+  let html, read;
+  if (key === 'mileage') {
+    html = `<span class="with-unit"><input type="number" inputmode="numeric" min="0" value="${esc(item.mileage ?? '')}">
+      <select><option value="km">km</option><option value="mile">マイル</option></select></span>`;
+    read = () => ({ mileage: td.querySelector('input').value, mileage_unit: td.querySelector('select').value });
+  } else if (key === 'venue') {
+    html = `<select><option value="">未選択</option>${VENUES.map((v) => `<option>${v}</option>`).join('')}</select>`;
+    read = () => ({ venue: td.querySelector('select').value });
+  } else if (key === 'sales_points' || key === 'notes') {
+    html = `<textarea rows="3">${esc(item[key] ?? '')}</textarea>`;
+    read = () => ({ [key]: td.querySelector('textarea').value });
+  } else {
+    const type = DATE_KEYS.has(key) ? 'date' : 'text';
+    html = `<input type="${type}" value="${esc(item[key] ?? '')}"${key === 'color' ? ' list="dl-color"' : key === 'own_company' ? ' list="dl-company"' : ''}>`;
+    read = () => ({ [key]: td.querySelector('input').value });
+  }
+  td.classList.add('editing');
+  td.innerHTML = html;
+  if (key === 'mileage') td.querySelector('select').value = item.mileage_unit || 'km';
+  if (key === 'venue') td.querySelector('select').value = item.venue || '';
+  editing = { td, item, key, read };
+  const first = td.querySelector('input, select, textarea');
+  first.focus();
+  if (first.type === 'date') openPicker(first);
+  if (first.select && first.type === 'text') first.select();
+
+  td.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); finishEdit(false); }
+    else if (e.key === 'Enter' && !e.isComposing && (e.target.tagName !== 'TEXTAREA' || e.ctrlKey || e.metaKey)) {
+      e.preventDefault(); finishEdit(true);
+    }
+  });
+  // セルの外に出たら保存（距離の数値→単位の移動では保存しない）
+  td.addEventListener('focusout', (e) => {
+    if (td.contains(e.relatedTarget)) return;
+    setTimeout(() => { if (editing && editing.td === td) finishEdit(true); }, 0);
+  });
+  // 会場・日付は選んだ時点で保存
+  if (key === 'venue') td.querySelector('select').addEventListener('change', () => finishEdit(true));
+  if (DATE_KEYS.has(key)) td.querySelector('input').addEventListener('change', () => finishEdit(true));
+}
+
+// スマホでも確実に動くよう、2回のクリックの間隔で判定する
+let lastTap = { td: null, t: 0 };
 $('#list').addEventListener('click', (e) => {
-  const tr = e.target.closest('tr[data-id]');
-  if (tr) openForm(state.items.find((i) => i.id == tr.dataset.id));
+  const open = e.target.closest('[data-open]');
+  if (open) { openForm(state.items.find((i) => i.id == open.dataset.open)); return; }
+  const td = e.target.closest('td.editable');
+  if (!td || td.classList.contains('editing')) return;
+  const now = Date.now();
+  if (lastTap.td === td && now - lastTap.t < 400) {
+    lastTap = { td: null, t: 0 };
+    startEdit(td);
+  } else {
+    lastTap = { td, t: now };
+  }
 });
 
 let timer;
@@ -177,7 +292,7 @@ $('#q').addEventListener('input', (e) => {
 $('#btn-csv').addEventListener('click', () => {
   const cols = [['id', 'ID'], ['name', '車名'], ['chassis_no', '車台番号'], ['color', '色'], ['color_code', 'カラーコード'],
     ['mileage', '走行距離'], ['mileage_unit', '距離単位'], ['sales_points', 'セールスポイント'],
-    ['own_date', '自社'], ['venue', '会場'], ['event_date', '開催日'], ['shipped_date', '出庫日'],
+    ['own_company', '自社名'], ['venue', '会場'], ['event_date', '開催日'], ['shipped_date', '出庫日'],
     ['has_warranty', '保証書'], ['has_manual', '取説'], ['notes', 'メモ'], ['created_at', '登録日時']];
   const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const val = (it, k) => k === 'has_warranty' || k === 'has_manual' ? (it[k] ? 'あり' : 'なし')
