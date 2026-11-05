@@ -2,12 +2,14 @@
 import * as items from './api/items.js';
 import * as item from './api/item.js';
 import * as stats from './api/stats.js';
+import * as dateCounts from './api/date_counts.js';
 import { json, ensureSchema } from './lib.js';
 
 const ROUTES = [
   [/^\/api\/items\/?$/, items],
   [/^\/api\/items\/(?<id>[^/]+)\/?$/, item],
   [/^\/api\/stats\/?$/, stats],
+  [/^\/api\/date-counts\/?$/, dateCounts],
 ];
 const METHOD = { GET: 'onRequestGet', POST: 'onRequestPost', PUT: 'onRequestPut', PATCH: 'onRequestPatch', DELETE: 'onRequestDelete' };
 

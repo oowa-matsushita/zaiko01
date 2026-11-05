@@ -132,3 +132,8 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 4px; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .toast.error { background: var(--danger); color: #fff; }
 input[type=date] { cursor: pointer; }
+.date-filters { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.date-filters label { flex: 1 1 220px; max-width: 300px; }
+.date-filters label { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; font-size: .9rem; font-weight: 600; }
+.date-filters select { font-variant-numeric: tabular-nums; }
+.date-filters select.active { border-color: var(--accent); outline: 1px solid var(--accent); }

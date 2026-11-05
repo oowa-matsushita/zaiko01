@@ -16,7 +16,7 @@ const mdDate = (d) => {
   const thisYear = new Date(Date.now() + 9 * 3600e3).getUTCFullYear();
   return `${y !== thisYear ? y + '年' : ''}${m}月${day}日`;
 };
-const state = { q: '', items: [] };
+const state = { q: '', event_date: '', shipped_date: '', items: [] };
 
 async function api(path, opts = {}) {
   const res = await fetch(path, { ...opts, headers: { 'content-type': 'application/json', ...(opts.headers || {}) } });
@@ -25,9 +25,50 @@ async function api(path, opts = {}) {
   return data;
 }
 
+// ---- 開催日・出庫日のプルダウン ----
+const WD = ['日', '月', '火', '水', '木', '金', '土'];
+const jstToday = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+const addDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+const dow = (iso) => new Date(iso + 'T00:00:00Z').getUTCDay();
+const shortDate = (iso) => { const [, m, d] = iso.split('-').map(Number); return `${m}/${d}(${WD[dow(iso)]})`; };
+
+// 開催日：今日から4週間の金曜・土曜
+function eventDates() {
+  const t = jstToday(), out = [];
+  for (let i = 0; i < 28; i++) { const d = addDays(t, i); if (dow(d) === 5 || dow(d) === 6) out.push(d); }
+  return out;
+}
+// 出庫日：今日から7日分
+function shippedDates() {
+  const t = jstToday();
+  return Array.from({ length: 7 }, (_, i) => addDays(t, i));
+}
+
+function fillDateSelect(sel, dates, counts, current) {
+  const extra = current && !dates.includes(current) ? [current] : [];
+  sel.innerHTML = '<option value="">すべて</option>' + [...dates, ...extra].map((d) =>
+    `<option value="${d}">${shortDate(d)}　${counts[d] || 0}台</option>`).join('');
+  sel.value = current || '';
+  sel.classList.toggle('active', !!current);
+}
+
+async function loadDateCounts() {
+  try {
+    const c = await api('/api/date-counts');
+    fillDateSelect($('#f-event'), eventDates(), c.event_date, state.event_date);
+    fillDateSelect($('#f-shipped'), shippedDates(), c.shipped_date, state.shipped_date);
+  } catch { /* 台数が取れなくても一覧は表示する */ }
+}
+
+$('#f-event').addEventListener('change', (e) => { state.event_date = e.target.value; load(); });
+$('#f-shipped').addEventListener('change', (e) => { state.shipped_date = e.target.value; load(); });
+
 async function load() {
   const p = new URLSearchParams({ sort: 'created_desc', limit: '1000' });
   if (state.q) p.set('q', state.q);
+  if (state.event_date) p.set('event_date', state.event_date);
+  if (state.shipped_date) p.set('shipped_date', state.shipped_date);
+  loadDateCounts();
   try {
     const data = await api('/api/items?' + p);
     state.items = data.items;
@@ -85,7 +126,7 @@ function render({ total }) {
   }
   renderHead();
   if (!state.items.length) {
-    $('#list').innerHTML = `<tr><td class="empty" colspan="${COLS.length}">${state.q ? '該当する車両がありません' : 'まだ登録がありません。「＋ 買取登録」から追加してください'}</td></tr>`;
+    $('#list').innerHTML = `<tr><td class="empty" colspan="${COLS.length}">${state.q || state.event_date || state.shipped_date ? '該当する車両がありません' : 'まだ登録がありません。「＋ 買取登録」から追加してください'}</td></tr>`;
     return;
   }
   const { key, dir } = sortState;
@@ -194,6 +235,7 @@ async function saveField(item, patch) {
     const row = await api(`/api/items/${item.id}`, { method: 'PATCH', body: JSON.stringify(patch) });
     Object.assign(item, row);
     toast('保存しました');
+    if ('event_date' in patch || 'shipped_date' in patch) loadDateCounts();
   } catch (err) {
     toast(err.message, true);
   }

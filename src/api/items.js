@@ -28,6 +28,10 @@ export async function onRequestGet({ request, env }) {
   if (from) { where.push(`purchase_date >= ?${args.length + 1}`); args.push(from); }
   const to = p.get('to');
   if (to) { where.push(`purchase_date <= ?${args.length + 1}`); args.push(to); }
+  for (const f of ['event_date', 'shipped_date', 'venue']) {
+    const v = p.get(f);
+    if (v) { where.push(`${f} = ?${args.length + 1}`); args.push(v); }
+  }
 
   const order = SORTS[p.get('sort')] || SORTS.created_desc;
   const limit = Math.min(Math.max(parseInt(p.get('limit') || '200', 10) || 200, 1), 1000);
