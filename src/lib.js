@@ -3,6 +3,7 @@
 export const FIELDS = [
   'name', 'chassis_no', 'color', 'color_code', 'mileage', 'mileage_unit',
   'sales_points', 'has_warranty', 'has_manual',
+  'own_date', 'venue', 'event_date', 'shipped_date',
   'model_no', 'category', 'condition_rank', 'quantity',
   'purchase_date', 'purchase_price', 'supplier', 'location', 'list_price',
   'status', 'sold_date', 'sold_price', 'fees', 'notes',
@@ -10,6 +11,8 @@ export const FIELDS = [
 const INT_FIELDS = new Set(['quantity', 'purchase_price', 'list_price', 'sold_price', 'fees', 'mileage']);
 const BOOL_FIELDS = new Set(['has_warranty', 'has_manual']);
 export const MILEAGE_UNITS = ['km', 'mile'];
+export const VENUES = ['名古屋', '静岡', '廃車'];
+const DATE_FIELDS = new Set(['own_date', 'event_date', 'shipped_date', 'purchase_date', 'sold_date']);
 
 // 後から追加した列。Worker が起動時に足りない列を自動で追加する
 const ADDED_COLUMNS = {
@@ -21,6 +24,10 @@ const ADDED_COLUMNS = {
   sales_points: 'TEXT',
   has_warranty: 'INTEGER NOT NULL DEFAULT 0',
   has_manual: 'INTEGER NOT NULL DEFAULT 0',
+  own_date: 'TEXT',      // 自社（日付）
+  venue: 'TEXT',         // 会場
+  event_date: 'TEXT',    // 開催日
+  shipped_date: 'TEXT',  // 出庫日
 };
 let schemaReady = null;
 export function ensureSchema(db) {
@@ -67,6 +74,14 @@ export function clean(input, partial = false) {
   }
   if ('status' in out && out.status !== null && !STATUSES.includes(out.status)) {
     throw new Error(`status は ${STATUSES.join(' / ')} のいずれかです`);
+  }
+  for (const f of DATE_FIELDS) {
+    if (f in out && out[f] !== null && !/^\d{4}-\d{2}-\d{2}$/.test(out[f])) {
+      throw new Error(`${f} は YYYY-MM-DD 形式の日付で入力してください`);
+    }
+  }
+  if ('venue' in out && out.venue !== null && !VENUES.includes(out.venue)) {
+    throw new Error(`会場は ${VENUES.join(' / ')} のいずれかです`);
   }
   if ('mileage_unit' in out) {
     if (out.mileage_unit === null) out.mileage_unit = 'km';

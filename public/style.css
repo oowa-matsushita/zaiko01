@@ -116,3 +116,4 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 4px; }
 #tbl td.rowno { color: var(--muted); text-align: right; }
 #tbl .empty { white-space: normal; cursor: default; }
 .hint { font-size: .8rem; margin: 6px 0 0; }
+#tbl td.date { font-variant-numeric: tabular-nums; }

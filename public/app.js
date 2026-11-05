@@ -9,6 +9,13 @@ const fmtMileage = (it) => it.mileage == null ? null
 
 // D1 の datetime('now') は UTC なので日本時間の日付にする
 const jstDate = (t) => t ? new Date(Date.parse(t.replace(' ', 'T') + 'Z') + 9 * 3600e3).toISOString().slice(0, 10) : '';
+// 2026-11-05 → 11月5日（今年以外は年も付ける）
+const mdDate = (d) => {
+  if (!d) return '';
+  const [y, m, day] = d.split('-').map(Number);
+  const thisYear = new Date(Date.now() + 9 * 3600e3).getUTCFullYear();
+  return `${y !== thisYear ? y + '年' : ''}${m}月${day}日`;
+};
 const state = { q: '', items: [] };
 
 async function api(path, opts = {}) {
@@ -38,6 +45,10 @@ const COLS = [
   ['color', '色'],
   ['color_code', 'カラーコード'],
   ['mileage', '走行距離', 'num'],
+  ['own_date', '自社', 'date'],
+  ['venue', '会場', 'center'],
+  ['event_date', '開催日', 'date'],
+  ['shipped_date', '出庫日', 'date'],
   ['sales_points', 'セールスポイント', 'wrap'],
   ['has_warranty', '保証書', 'center'],
   ['has_manual', '取説', 'center'],
@@ -54,6 +65,7 @@ const cellHtml = (it, k) => {
     case 'mileage': return esc(fmtMileage(it) ?? '');
     case 'has_warranty': case 'has_manual': return it[k] ? '✓' : '';
     case 'created_at': return esc(jstDate(it.created_at));
+    case 'own_date': case 'event_date': case 'shipped_date': return esc(mdDate(it[k]));
     default: return esc(it[k] ?? '');
   }
 };
@@ -165,6 +177,7 @@ $('#q').addEventListener('input', (e) => {
 $('#btn-csv').addEventListener('click', () => {
   const cols = [['id', 'ID'], ['name', '車名'], ['chassis_no', '車台番号'], ['color', '色'], ['color_code', 'カラーコード'],
     ['mileage', '走行距離'], ['mileage_unit', '距離単位'], ['sales_points', 'セールスポイント'],
+    ['own_date', '自社'], ['venue', '会場'], ['event_date', '開催日'], ['shipped_date', '出庫日'],
     ['has_warranty', '保証書'], ['has_manual', '取説'], ['notes', 'メモ'], ['created_at', '登録日時']];
   const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const val = (it, k) => k === 'has_warranty' || k === 'has_manual' ? (it[k] ? 'あり' : 'なし')
