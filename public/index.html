@@ -23,7 +23,7 @@
       <span id="count" class="muted"></span>
       <span class="spacer"></span>
       <button id="btn-layout"></button>
-      <button id="btn-csv">CSV出力（Excel）</button>
+      <button id="btn-print">🖨 一覧印刷</button>
       <span class="menu-wrap">
         <button id="btn-request" class="primary" aria-haspopup="true">依頼する ▾</button>
         <span id="req-menu" class="menu" hidden>
@@ -46,6 +46,17 @@
     <form id="form" method="dialog">
       <h2 id="dlg-title">買取登録</h2>
       <input type="hidden" name="id">
+      <div class="full plate-scan">
+        <label class="scan-btn">
+          <input id="plate-file" type="file" accept="image/*" capture="environment" hidden>
+          📷 コーションプレートを撮影
+        </label>
+        <p class="scan-note muted">撮影すると 車台番号・カラーコード を自動で入力します</p>
+        <div class="scan-result" hidden>
+          <img id="plate-preview" alt="撮影したコーションプレート">
+          <p id="plate-status" aria-live="polite"></p>
+        </div>
+      </div>
       <label class="full">車名 *<input name="name" required placeholder="例：トヨタ プリウス S"></label>
       <label class="full">車台番号<input name="chassis_no" autocapitalize="characters" placeholder="例：ZVW30-1234567"></label>
       <label>色<input name="color" list="dl-color" placeholder="例：パールホワイト"></label>

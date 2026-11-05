@@ -175,3 +175,16 @@ input[type=date] { cursor: pointer; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 6px rgb(220 38 38 / .25); } }
 .voice-status { min-height: 1.2em; font-size: .8rem; }
 .voice-status .interim { color: var(--text); opacity: .7; }
+.plate-scan { display: grid; gap: 6px; padding: 12px; border: 1px dashed var(--accent); border-radius: 10px; background: var(--hover); }
+.scan-btn {
+  display: flex !important; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+  background: var(--accent); color: var(--accent-text) !important; border-radius: 10px; padding: 14px; font-size: 1.05rem !important; font-weight: 600;
+}
+.scan-note { margin: 0; font-size: .8rem; text-align: center; }
+.scan-result { display: flex; gap: 10px; align-items: center; }
+.scan-result img { width: 96px; height: 72px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); flex: 0 0 auto; }
+.scan-result p { margin: 0; font-size: .9rem; }
+.scan-result p.ok { color: var(--plus); }
+.scan-result p.ng { color: var(--danger); }
+#form input.filled { background: #fff7d6; border-color: #e0b100; }
+@media (prefers-color-scheme: dark) { #form input.filled { background: #3a3215; } }

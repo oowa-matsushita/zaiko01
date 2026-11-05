@@ -261,7 +261,10 @@ $('#btn-delete').addEventListener('click', async () => {
 $('#btn-add').addEventListener('click', () => openForm(null));
 
 const layoutBtn = $('#btn-layout');
-const updateLayoutBtn = () => { layoutBtn.textContent = layoutKey === '1' ? '表示：1段（横長）' : '表示：2段（縦型）'; };
+const updateLayoutBtn = () => {
+  layoutBtn.textContent = '表示切替';
+  layoutBtn.title = layoutKey === '1' ? '現在：1段（横長）→ 押すと2段に切替' : '現在：2段（縦型）→ 押すと1段に切替';
+};
 updateLayoutBtn();
 layoutBtn.addEventListener('click', () => {
   layoutKey = layoutKey === '1' ? '2' : '1';
@@ -394,24 +397,6 @@ $('#q').addEventListener('input', (e) => {
   timer = setTimeout(() => { state.q = e.target.value.trim(); load(); }, 250);
 });
 
-// ---- CSV出力（表示中の一覧） ----
-$('#btn-csv').addEventListener('click', () => {
-  const cols = [['id', 'ID'], ['name', '車名'], ['chassis_no', '車台番号'], ['color', '色'], ['color_code', 'カラーコード'],
-    ['mileage', '走行距離'], ['mileage_unit', '距離単位'], ['sales_points', 'セールスポイント'],
-    ['own_date', '自社名', 'date'], ['venue', '会場'], ['event_date', '開催日'], ['shipped_date', '出庫日'],
-    ['has_warranty', '保証書'], ['has_manual', '取説'], ['notes', 'メモ'], ['created_at', '登録日時']];
-  const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-  const val = (it, k) => k === 'has_warranty' || k === 'has_manual' ? (it[k] ? 'あり' : 'なし')
-    : k === 'mileage_unit' ? (it[k] === 'mile' ? 'マイル' : 'km') : it[k];
-  const lines = [cols.map((c) => cell(c[1])).join(',')]
-    .concat(state.items.map((it) => cols.map(([k]) => cell(val(it, k))).join(',')));
-  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv' });
-  const d = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `zaiko_${d}.csv` });
-  a.click();
-  URL.revokeObjectURL(a.href);
-});
-
 load();
 
 // ---- 依頼する（メール / PDF） ----
@@ -421,7 +406,13 @@ const REQ_FIELDS = [
   ['mileage', '走行距離'], ['own_date', '自社名'], ['venue', '会場'], ['event_date', '開催日'], ['shipped_date', '出庫日'],
 ];
 const DATE_FIELDS_REQ = new Set(['own_date', 'event_date', 'shipped_date']);
+// 一覧印刷はすべての項目（No. は通し番号）
+const LIST_FIELDS = COLS.filter(([k]) => k !== 'id').map(([k, l]) => [k, l]);
+const WIDE_FIELDS = new Set(['sales_points', 'notes']);
+const CENTER_FIELDS = new Set(['venue', 'has_warranty', 'has_manual']);
 const reqVal = (it, k) => k === 'mileage' ? (fmtMileage(it) ?? '')
+  : k === 'has_warranty' || k === 'has_manual' ? (it[k] ? '✓' : '')
+  : k === 'created_at' ? mdDate(jstDate(it.created_at))
   : DATE_FIELDS_REQ.has(k) ? (it[k] ? `${mdDate(it[k])}(${WD[dow(it[k])]})` : '')
   : (it[k] ?? '');
 const todayLabel = () => { const t = jstToday(); return `${mdDate(t)}(${WD[dow(t)]})`; };
@@ -474,25 +465,26 @@ textarea{width:100%;box-sizing:border-box;height:calc(100vh - 90px);font:inherit
   ta.focus();
 }
 
-function openPdfWindow(items) {
+function openPdfWindow(items, fields = REQ_FIELDS, title = '依頼一覧') {
   const w = window.open('', '_blank', 'width=1000,height=760');
   if (!w) { toast('ポップアップがブロックされました。ブラウザの設定で許可してください', true); return; }
   const fl = filterLabel();
-  const rows = items.map((it, i) => `<tr><td class="n">${i + 1}</td>${REQ_FIELDS.map(([k]) => `<td${k === 'mileage' ? ' class="r"' : ''}>${esc(reqVal(it, k))}</td>`).join('')}</tr>`).join('');
+  const cls = (k) => k === 'mileage' ? ' class="r"' : WIDE_FIELDS.has(k) ? ' class="w"' : CENTER_FIELDS.has(k) ? ' class="c"' : '';
+  const rows = items.map((it, i) => `<tr><td class="n">${i + 1}</td>${fields.map(([k]) => `<td${cls(k)}>${esc(reqVal(it, k))}</td>`).join('')}</tr>`).join('');
   w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8">
-<title>依頼一覧_${jstToday()}</title><style>${POPUP_STYLE}
+<title>${title}_${jstToday()}</title><style>${POPUP_STYLE}
 @page{size:A4 landscape;margin:12mm}
 h1{font-size:18px;margin:0 0 4px}.sub{font-size:12px;color:#444;margin:0 0 10px}
 table{border-collapse:collapse;width:100%;font-size:11px}
 th,td{border:1px solid #888;padding:4px 6px;text-align:left;vertical-align:top}
-th{background:#eef0f3}td.n{text-align:right;width:2em}td.r{text-align:right;white-space:nowrap}
+th{background:#eef0f3}td.n{text-align:right;width:2em}td.r{text-align:right;white-space:nowrap}th,td{white-space:nowrap}td.w{white-space:normal;min-width:10em}.c{text-align:center}
 tr{break-inside:avoid}thead{display:table-header-group}
 .bar{margin-bottom:12px;display:flex;gap:8px;align-items:center}
 @media print{.bar{display:none}body{padding:0}}</style></head><body>
 <div class="bar"><button class="primary" onclick="print()">印刷 / PDFで保存</button><span style="font-size:13px;color:#555">印刷画面で「送信先：PDFに保存」を選ぶとPDFになります</span></div>
-<h1>依頼一覧</h1>
+<h1>${title}</h1>
 <p class="sub">${esc(todayLabel())}　全${items.length}台${fl ? '　対象：' + esc(fl) : ''}</p>
-<table><thead><tr><th>No.</th>${REQ_FIELDS.map(([, l]) => `<th>${l}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+<table><thead><tr><th>No.</th>${fields.map(([k, l]) => `<th${CENTER_FIELDS.has(k) ? ' class="c"' : ''}>${l}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
 </body></html>`);
   w.document.close();
   w.focus();
@@ -589,4 +581,67 @@ document.querySelectorAll('.mic').forEach((btn) => {
 dlg.addEventListener('close', () => {
   stopVoice();
   document.querySelectorAll('.voice-status').forEach((s) => { s.textContent = ''; });
+});
+
+// ---- コーションプレート撮影 → 車台番号・カラーコードを自動入力 ----
+// 写真は保存せず、読み取りにだけ使う
+async function shrinkImage(file, max = 1600) {
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(bmp.width * scale);
+  c.height = Math.round(bmp.height * scale);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  bmp.close?.();
+  return c.toDataURL('image/jpeg', 0.85);
+}
+
+function resetPlateScan() {
+  $('.scan-result').hidden = true;
+  $('#plate-status').textContent = '';
+  $('#plate-file').value = '';
+  form.querySelectorAll('input.filled').forEach((el) => el.classList.remove('filled'));
+}
+dlg.addEventListener('close', resetPlateScan);
+
+$('#plate-file').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const status = $('#plate-status');
+  form.querySelectorAll('input.filled').forEach((el) => el.classList.remove('filled'));
+  $('.scan-result').hidden = false;
+  status.className = '';
+  status.textContent = '読み取り中…（数秒かかります）';
+  try {
+    const image = await shrinkImage(file);
+    $('#plate-preview').src = image;
+    const r = await api('/api/ocr-plate', { method: 'POST', body: JSON.stringify({ image }) });
+    const got = [];
+    for (const [k, label] of [['chassis_no', '車台番号'], ['color_code', 'カラーコード']]) {
+      if (r[k]) {
+        form.elements[k].value = r[k];
+        form.elements[k].classList.add('filled');
+        got.push(`${label} ${r[k]}`);
+      }
+    }
+    if (got.length) {
+      status.className = 'ok';
+      status.textContent = `読み取りました：${got.join('、')}。間違いがないか確認してください`;
+    } else {
+      status.className = 'ng';
+      status.textContent = '読み取れませんでした。明るい場所で、プレートが画面いっぱいになるよう撮り直してください';
+    }
+  } catch (err) {
+    status.className = 'ng';
+    status.textContent = `読み取りに失敗しました：${err.message}`;
+  } finally {
+    e.target.value = '';
+  }
+});
+form.addEventListener('input', (e) => e.target.classList?.remove('filled'));
+
+$('#btn-print').addEventListener('click', () => {
+  const items = sortedItems();
+  if (!items.length) { toast('表に車両がありません', true); return; }
+  openPdfWindow(items, LIST_FIELDS, '在庫一覧');
 });

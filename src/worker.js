@@ -3,6 +3,7 @@ import * as items from './api/items.js';
 import * as item from './api/item.js';
 import * as stats from './api/stats.js';
 import * as dateCounts from './api/date_counts.js';
+import * as ocrPlate from './api/ocr_plate.js';
 import { json, ensureSchema } from './lib.js';
 
 const ROUTES = [
@@ -10,6 +11,7 @@ const ROUTES = [
   [/^\/api\/items\/(?<id>[^/]+)\/?$/, item],
   [/^\/api\/stats\/?$/, stats],
   [/^\/api\/date-counts\/?$/, dateCounts],
+  [/^\/api\/ocr-plate\/?$/, ocrPlate],
 ];
 const METHOD = { GET: 'onRequestGet', POST: 'onRequestPost', PUT: 'onRequestPut', PATCH: 'onRequestPatch', DELETE: 'onRequestDelete' };
 

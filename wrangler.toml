@@ -14,3 +14,7 @@ binding = "DB"
 database_name = "zaiko01-db"
 database_id = "764cdbe8-60d6-4980-b2ef-bd7dd30f9ebc"
 migrations_dir = "migrations"
+
+# コーションプレートの読み取りに使う Workers AI
+[ai]
+binding = "AI"
