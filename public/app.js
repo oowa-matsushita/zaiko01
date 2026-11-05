@@ -230,7 +230,7 @@ function openForm(item) {
 function updateMileage() {
   const mv = form.elements.mileage.value;
   $('.mileage-conv').textContent = mv !== '' && form.elements.mileage_unit.value === 'mile'
-    ? `約 ${num(Math.round(Number(mv) * KM_PER_MILE))} km` : '';
+    ? `約 ${num(Math.round(Number(mv.replace(/[,，\s]/g, "")) * KM_PER_MILE))} km` : "";
 }
 form.addEventListener('input', updateMileage);
 form.addEventListener('change', updateMileage);
@@ -335,7 +335,7 @@ function startEdit(td) {
 
   let html, read;
   if (key === 'mileage') {
-    html = `<span class="with-unit"><input type="number" inputmode="numeric" min="0" value="${esc(item.mileage ?? '')}">
+    html = `<span class="with-unit"><input type="text" inputmode="numeric" autocomplete="off" value="${esc(item.mileage ?? '')}">
       <select><option value="km">km</option><option value="mile">マイル</option></select></span>`;
     read = () => ({ mileage: td.querySelector('input').value, mileage_unit: td.querySelector('select').value });
   } else if (key === 'venue') {

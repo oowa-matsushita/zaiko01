@@ -128,7 +128,7 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 4px; }
 #tbl td.date { font-variant-numeric: tabular-nums; }
 #tbl td.editing { padding: 2px; background: var(--card); outline: 2px solid var(--accent); outline-offset: -2px; }
 #tbl td.editing input, #tbl td.editing select, #tbl td.editing textarea { padding: 4px 6px; border-radius: 4px; min-width: 120px; }
-#tbl td.editing input[type=number] { min-width: 90px; }
+#tbl td.editing .with-unit input { min-width: 90px; }
 #tbl td.editing textarea { min-width: 270px; }
 #tbl td.editing .with-unit { gap: 4px; }
 .edit-btn { border: 0; background: none; padding: 0 6px 0 0; color: var(--accent); font-size: 1rem; }
@@ -190,3 +190,5 @@ input[type=date] { cursor: pointer; }
 @media (prefers-color-scheme: dark) { #form input.filled { background: #3a3215; } }
 .top-actions { display: flex; align-items: center; gap: 12px; }
 .logout { color: var(--muted); font-size: .85rem; }
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }

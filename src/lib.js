@@ -8,6 +8,7 @@ export const FIELDS = [
   'purchase_date', 'purchase_price', 'supplier', 'location', 'list_price',
   'status', 'sold_date', 'sold_price', 'fees', 'notes',
 ];
+const FIELD_LABELS = { mileage: '走行距離', purchase_price: '買取価格', list_price: '販売予定価格', sold_price: '販売価格', fees: '手数料', quantity: '数量' };
 const INT_FIELDS = new Set(['quantity', 'purchase_price', 'list_price', 'sold_price', 'fees', 'mileage']);
 const BOOL_FIELDS = new Set(['has_warranty', 'has_manual']);
 export const MILEAGE_UNITS = ['km', 'mile'];
@@ -62,8 +63,9 @@ export function clean(input, partial = false) {
     if (BOOL_FIELDS.has(f)) {
       v = v === true || v === 1 || v === '1' || v === 'true' || v === 'on' || v === 'あり' ? 1 : 0;
     } else if (v !== null && INT_FIELDS.has(f)) {
-      const n = Number(String(v).replace(/[,円¥\s]/g, ''));
-      if (!Number.isFinite(n)) throw new Error(`${f} は数値で入力してください`);
+      const half = String(v).replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
+      const n = Number(half.replace(/[,，円¥\s]|km|キロ|マイル|mile/gi, ''));
+      if (!Number.isFinite(n) || n < 0) throw new Error(`${FIELD_LABELS[f] || f} は数字で入力してください`);
       v = Math.round(n);
     } else if (v !== null) {
       v = String(v).trim();
