@@ -1,4 +1,4 @@
-import { clean, json, PROFIT_SQL } from '../../../lib/items.js';
+import { clean, json, PROFIT_SQL } from '../lib.js';
 
 function getId(params) {
   const id = Number(params.id);

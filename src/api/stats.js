@@ -1,4 +1,4 @@
-import { json } from '../../lib/items.js';
+import { json } from '../lib.js';
 
 // GET /api/stats?month=YYYY-MM  在庫状況と月別の売上・利益
 export async function onRequestGet({ request, env }) {

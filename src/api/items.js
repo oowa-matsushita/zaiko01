@@ -1,4 +1,4 @@
-import { clean, json, PROFIT_SQL } from '../../../lib/items.js';
+import { clean, json, PROFIT_SQL } from '../lib.js';
 
 const SORTS = {
   purchase_date_desc: 'purchase_date DESC, id DESC',

@@ -1,6 +1,6 @@
 # zaiko01 — 買取在庫管理
 
-Cloudflare Pages + Pages Functions + D1 で動く、個人用の買取在庫管理サイトです。
+Cloudflare Workers（静的アセット）+ D1 で動く、個人用の買取在庫管理サイトです。
 
 ## 機能
 - 買取登録・編集・削除（品名、型番・JAN、カテゴリ、状態ランク、数量、買取日、買取価格、仕入先、保管場所、販売予定価格、メモ）
@@ -12,13 +12,13 @@ Cloudflare Pages + Pages Functions + D1 で動く、個人用の買取在庫管�
 ## 構成
 ```
 public/            画面 (HTML/CSS/JS、ビルド不要)
-functions/api/     API (Pages Functions)
-  items/index.js   GET 一覧・検索 / POST 登録
-  items/[id].js    GET / PUT・PATCH 更新 / DELETE
-  stats.js         GET 集計
-  _middleware.js   エラー処理・APIトークン認証
-lib/items.js       入力チェックなど共通処理
+src/worker.js      Worker 本体。/api/* を処理し、それ以外は public/ を返す
+src/api/items.js   GET 一覧・検索 / POST 登録
+src/api/item.js    GET / PUT・PATCH 更新 / DELETE
+src/api/stats.js   GET 集計
+src/lib.js         入力チェックなど共通処理
 migrations/        D1 のテーブル定義
+wrangler.toml      Worker と D1 の設定（database_id を自分の D1 の ID にする）
 ```
 
 ## Cloudflare への公開手順（初回のみ）
@@ -30,29 +30,21 @@ Cloudflare ダッシュボード → **ストレージとデータベース → 
 
 （または PC で `npx wrangler d1 create zaiko01-db` → `npm run db:migrate:remote`）
 
-### 2. Pages プロジェクトを作る
-ダッシュボード → **Workers & Pages → 作成 → Pages → Git に接続** → `zaiko01` リポジトリを選択
-- フレームワーク：なし
-- ビルドコマンド：空欄
-- ビルド出力ディレクトリ：`public`
+### 2. wrangler.toml に D1 の ID を書く
+D1 の「概要」に表示されるデータベース ID を `wrangler.toml` の `database_id` に設定します。
 
-### 3. D1 をひも付ける
-作成した Pages プロジェクト → **設定 → バインディング → 追加 → D1 データベース**
-- 変数名：`DB`
-- データベース：`zaiko01-db`
-
-設定後、**デプロイメント**から「再試行（再デプロイ）」すると反映されます。
+### 3. Worker を作る
+ダッシュボード → **Workers & Pages → 作成 → GitHub からインポート** → `zaiko01` を選択（ビルド設定は既定のまま、デプロイコマンド `npx wrangler deploy`）。
+push するたびに自動でデプロイされます。
 
 ### 4. 自分だけがアクセスできるようにする（重要）
-Pages プロジェクト → **設定 → 一般 → アクセスポリシー（Cloudflare Access）を有効化**
-- ポリシーで自分のメールアドレスだけを許可
-- `*.pages.dev` のプレビュー URL も含めて保護されます
+Worker の **Access** タブ → Cloudflare Access を有効化し、ポリシーで自分のメールアドレスだけを許可します。
 
 ## ローカルで動かす
 ```bash
 npm install
 npm run db:migrate:local
-npm run dev     # http://localhost:8788
+npm run dev     # http://localhost:8787
 ```
 
 ## API（Claude などからの連携用）
