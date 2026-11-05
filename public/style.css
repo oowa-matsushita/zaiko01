@@ -125,7 +125,7 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 4px; }
 #tbl td.editing { padding: 2px; background: var(--card); outline: 2px solid var(--accent); outline-offset: -2px; }
 #tbl td.editing input, #tbl td.editing select, #tbl td.editing textarea { padding: 4px 6px; border-radius: 4px; min-width: 120px; }
 #tbl td.editing input[type=number] { min-width: 90px; }
-#tbl td.editing textarea { min-width: 240px; }
+#tbl td.editing textarea { min-width: 270px; }
 #tbl td.editing .with-unit { gap: 4px; }
 .edit-btn { border: 0; background: none; padding: 0 6px 0 0; color: var(--accent); font-size: 1rem; }
 #tbl td.rowno { white-space: nowrap; }
@@ -154,3 +154,12 @@ input[type=date] { cursor: pointer; }
 .date-box.all .n { font-size: .95rem; }
 .date-box[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 .date-box[aria-pressed="true"] .d, .date-box[aria-pressed="true"] .n { color: var(--accent-text); }
+.menu-wrap { position: relative; }
+.menu {
+  position: absolute; right: 0; top: calc(100% + 4px); z-index: 5; display: grid; min-width: 270px;
+  background: var(--card); border: 1px solid var(--tline); border-radius: 8px; box-shadow: 0 6px 20px rgb(0 0 0 / .15); overflow: hidden;
+}
+.menu button { white-space: nowrap; border: 0; border-radius: 0; text-align: left; padding: 10px 14px; }
+.menu button:hover { background: var(--hover); }
+.menu button + button { border-top: 1px solid var(--line); }
+.row { flex-wrap: wrap; }

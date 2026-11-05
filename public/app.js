@@ -135,6 +135,17 @@ const cellHtml = (it, k) => {
   }
 };
 
+// 表に表示している順の車両一覧
+function sortedItems() {
+  const { key, dir } = sortState;
+  return [...state.items].sort((a, b) => {
+    const x = sortVal(a, key), y = sortVal(b, key);
+    if (x == null || x === '') return 1;
+    if (y == null || y === '') return -1;
+    return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'ja')) * dir;
+  });
+}
+
 function renderHead() {
   const rows = layout();
   $('#tbl thead').innerHTML = rows.map((keys, r) => `<tr>${keys.map((k) => {
@@ -180,13 +191,7 @@ function render({ total }) {
     setBody(`<tbody><tr><td class="empty" colspan="${colCount()}">${state.q || state.event_date || state.shipped_date ? '該当する車両がありません' : 'まだ登録がありません。「＋ 買取登録」から追加してください'}</td></tr></tbody>`);
     return;
   }
-  const { key, dir } = sortState;
-  const rows = [...state.items].sort((a, b) => {
-    const x = sortVal(a, key), y = sortVal(b, key);
-    if (x == null || x === '') return 1;
-    if (y == null || y === '') return -1;
-    return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'ja')) * dir;
-  });
+  const rows = sortedItems();
   // 1台ごとに tbody を分けて、2段表示でも1台単位で色分け・ハイライトする
   setBody(rows.map((it) => `<tbody class="vehicle">${rowHtml(it)}</tbody>`).join(''));
 }
@@ -408,3 +413,104 @@ $('#btn-csv').addEventListener('click', () => {
 });
 
 load();
+
+// ---- 依頼する（メール / PDF） ----
+// 対象は表に表示中の車両（検索・日付の絞り込み・並び順をそのまま反映）
+const REQ_FIELDS = [
+  ['name', '車名'], ['chassis_no', '車台番号'], ['color', '色'], ['color_code', 'カラーコード'],
+  ['mileage', '走行距離'], ['own_date', '自社名'], ['venue', '会場'], ['event_date', '開催日'], ['shipped_date', '出庫日'],
+];
+const DATE_FIELDS_REQ = new Set(['own_date', 'event_date', 'shipped_date']);
+const reqVal = (it, k) => k === 'mileage' ? (fmtMileage(it) ?? '')
+  : DATE_FIELDS_REQ.has(k) ? (it[k] ? `${mdDate(it[k])}(${WD[dow(it[k])]})` : '')
+  : (it[k] ?? '');
+const todayLabel = () => { const t = jstToday(); return `${mdDate(t)}(${WD[dow(t)]})`; };
+function filterLabel() {
+  const f = [];
+  if (state.event_date) f.push(`開催日 ${shortDate(state.event_date)}`);
+  if (state.shipped_date) f.push(`出庫日 ${shortDate(state.shipped_date)}`);
+  if (state.q) f.push(`検索「${state.q}」`);
+  return f.join('／');
+}
+
+function requestText(items) {
+  const head = [`【依頼】${todayLabel()}`];
+  const fl = filterLabel();
+  if (fl) head.push(`対象：${fl}`);
+  head.push(`全${items.length}台`);
+  const body = items.map((it, i) => [`■${i + 1}台目`, ...REQ_FIELDS.map(([k, l]) => `${l}：${reqVal(it, k) || '－'}`)].join('\n'));
+  return [head.join('\n'), ...body].join('\n\n') + '\n\nよろしくお願いいたします。';
+}
+
+const POPUP_STYLE = `body{font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;margin:0;padding:16px;color:#1d2330;background:#fff}
+button{font:inherit;padding:8px 16px;border-radius:8px;border:1px solid #c9ced6;background:#fff;cursor:pointer}
+button.primary{background:#2563eb;border-color:#2563eb;color:#fff}`;
+
+function openMailWindow(items) {
+  const text = requestText(items);
+  const w = window.open('', '_blank', 'width=560,height=760');
+  if (!w) { toast('ポップアップがブロックされました。ブラウザの設定で許可してください', true); return; }
+  w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>依頼文（${items.length}台）</title><style>${POPUP_STYLE}
+.bar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+textarea{width:100%;box-sizing:border-box;height:calc(100vh - 90px);font:inherit;font-size:15px;line-height:1.6;padding:10px;border:1px solid #c9ced6;border-radius:8px}
+#msg{color:#15803d}</style></head><body>
+<div class="bar"><button class="primary" id="copy">コピーする</button><a id="mail" href="#"><button type="button">メールアプリで開く</button></a><span id="msg"></span></div>
+<textarea id="t"></textarea></body></html>`);
+  w.document.close();
+  const ta = w.document.getElementById('t');
+  ta.value = text;
+  const subject = `【依頼】${todayLabel()} ${items.length}台`;
+  w.document.getElementById('mail').href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+  w.document.getElementById('copy').addEventListener('click', async () => {
+    const msg = w.document.getElementById('msg');
+    try {
+      await w.navigator.clipboard.writeText(ta.value);
+    } catch {
+      ta.select(); w.document.execCommand('copy');
+    }
+    msg.textContent = 'コピーしました。メールやLINEに貼り付けてください';
+  });
+  ta.focus();
+}
+
+function openPdfWindow(items) {
+  const w = window.open('', '_blank', 'width=1000,height=760');
+  if (!w) { toast('ポップアップがブロックされました。ブラウザの設定で許可してください', true); return; }
+  const fl = filterLabel();
+  const rows = items.map((it, i) => `<tr><td class="n">${i + 1}</td>${REQ_FIELDS.map(([k]) => `<td${k === 'mileage' ? ' class="r"' : ''}>${esc(reqVal(it, k))}</td>`).join('')}</tr>`).join('');
+  w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<title>依頼一覧_${jstToday()}</title><style>${POPUP_STYLE}
+@page{size:A4 landscape;margin:12mm}
+h1{font-size:18px;margin:0 0 4px}.sub{font-size:12px;color:#444;margin:0 0 10px}
+table{border-collapse:collapse;width:100%;font-size:11px}
+th,td{border:1px solid #888;padding:4px 6px;text-align:left;vertical-align:top}
+th{background:#eef0f3}td.n{text-align:right;width:2em}td.r{text-align:right;white-space:nowrap}
+tr{break-inside:avoid}thead{display:table-header-group}
+.bar{margin-bottom:12px;display:flex;gap:8px;align-items:center}
+@media print{.bar{display:none}body{padding:0}}</style></head><body>
+<div class="bar"><button class="primary" onclick="print()">印刷 / PDFで保存</button><span style="font-size:13px;color:#555">印刷画面で「送信先：PDFに保存」を選ぶとPDFになります</span></div>
+<h1>依頼一覧</h1>
+<p class="sub">${esc(todayLabel())}　全${items.length}台${fl ? '　対象：' + esc(fl) : ''}</p>
+<table><thead><tr><th>No.</th>${REQ_FIELDS.map(([, l]) => `<th>${l}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+</body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 300);
+}
+
+const reqMenu = $('#req-menu');
+$('#btn-request').addEventListener('click', (e) => {
+  e.stopPropagation();
+  reqMenu.hidden = !reqMenu.hidden;
+});
+document.addEventListener('click', () => { reqMenu.hidden = true; });
+reqMenu.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-req]');
+  if (!b) return;
+  reqMenu.hidden = true;
+  const items = sortedItems();
+  if (!items.length) { toast('表に車両がありません', true); return; }
+  if (b.dataset.req === 'mail') openMailWindow(items);
+  else openPdfWindow(items);
+});
