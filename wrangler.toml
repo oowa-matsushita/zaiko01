@@ -10,6 +10,5 @@ run_worker_first = ["/api/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "zaiko01-db"
-# D1 の「概要」に表示されるデータベースID に置き換えてください
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "764cdbe8-60d6-4980-b2ef-bd7dd30f9ebc"
 migrations_dir = "migrations"
