@@ -1,7 +1,7 @@
 // ID・パスワードによるログイン
 // 必要なシークレット（Cloudflare の Worker → 設定 → 変数とシークレット）:
 //   LOGIN_ID        ログインID
-//   LOGIN_PASSWORD  パスワード（6桁の数字）
+//   LOGIN_PASSWORD  パスワード（6文字以上）
 //   SESSION_SECRET  ログイン状態の署名用のランダムな長い文字列（32文字以上）
 import { json } from './lib.js';
 
@@ -9,14 +9,16 @@ const COOKIE = 'zaiko_session';
 const SESSION_DAYS = 30;
 const LOCK_WINDOW_MS = 15 * 60e3; // 15分
 const MAX_FAIL_PER_IP = 5;        // 同じIPから15分で5回失敗したらロック
-const MAX_FAIL_TOTAL = 10;        // 全体で15分に10回失敗したらロック（6桁の総当たり対策）
+const MAX_FAIL_TOTAL = 10;        // 全体で15分に10回失敗したらロック（総当たり対策）
+const MIN_PASSWORD = 6;
 
 const enc = new TextEncoder();
 const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const fromB64url = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
 
 export const authConfigured = (env) =>
-  !!(env.LOGIN_ID && env.LOGIN_PASSWORD && env.SESSION_SECRET && env.SESSION_SECRET.length >= 32);
+  !!(env.LOGIN_ID && env.LOGIN_PASSWORD && env.LOGIN_PASSWORD.length >= MIN_PASSWORD
+    && env.SESSION_SECRET && env.SESSION_SECRET.length >= 32);
 
 async function hmac(secret, data) {
   const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
@@ -64,7 +66,7 @@ async function ensureAttemptsTable(db) {
 // POST /api/login  { id, password }
 export async function handleLogin(request, env) {
   if (!authConfigured(env)) {
-    return json({ error: 'ログインの設定が完了していません（LOGIN_ID / LOGIN_PASSWORD / SESSION_SECRET）' }, 503);
+    return json({ error: 'ログインの設定が完了していません（LOGIN_ID / LOGIN_PASSWORD は6文字以上 / SESSION_SECRET は32文字以上）' }, 503);
   }
   let body;
   try { body = await request.json(); } catch { return json({ error: '入力が正しくありません' }, 400); }
@@ -106,7 +108,7 @@ export function handleLogout() {
 
 export function loginPage(env) {
   const setupMsg = authConfigured(env) ? '' :
-    '<p class="err">ログインの設定がまだ完了していません。Cloudflare で LOGIN_ID・LOGIN_PASSWORD・SESSION_SECRET を設定してください。</p>';
+    '<p class="err">ログインの設定がまだ完了していません。Cloudflare で LOGIN_ID・LOGIN_PASSWORD（6文字以上）・SESSION_SECRET（32文字以上）を設定してください。</p>';
   const html = `<!doctype html><html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
 <title>ログイン｜中古車 買取在庫</title>
@@ -125,7 +127,7 @@ button:disabled{opacity:.6}.err{color:var(--danger);margin:0;font-size:.9rem;min
   <h1>中古車 買取在庫</h1>
   ${setupMsg}
   <label>ID<input name="id" autocomplete="username" autocapitalize="none" required></label>
-  <label>パスワード（6桁）<input name="password" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" required></label>
+  <label>パスワード（6文字以上）<input name="password" type="password" minlength="6" autocomplete="current-password" required></label>
   <p class="err" id="e" role="alert"></p>
   <button id="b">ログイン</button>
 </form>
