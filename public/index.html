@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>買取在庫管理</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>買取在庫管理</h1>
+    <button id="btn-add" class="primary">＋ 買取登録</button>
+  </header>
+
+  <section id="stats" class="stats" aria-label="集計"></section>
+
+  <section class="filters">
+    <input id="q" type="search" placeholder="品名・型番・仕入先・保管場所で検索">
+    <div class="tabs" role="tablist">
+      <button data-status="" class="active">すべて</button>
+      <button data-status="in_stock">在庫</button>
+      <button data-status="listed">出品中</button>
+      <button data-status="sold">売却済</button>
+    </div>
+    <div class="row">
+      <select id="sort" aria-label="並び順">
+        <option value="purchase_date_desc">買取日が新しい順</option>
+        <option value="purchase_date_asc">買取日が古い順</option>
+        <option value="updated_desc">更新が新しい順</option>
+        <option value="price_desc">買取価格が高い順</option>
+      </select>
+      <button id="btn-csv">CSV出力</button>
+    </div>
+  </section>
+
+  <p id="count" class="muted"></p>
+  <ul id="list" class="list"></ul>
+
+  <dialog id="dlg">
+    <form id="form" method="dialog">
+      <h2 id="dlg-title">買取登録</h2>
+      <input type="hidden" name="id">
+      <label class="full">品名 *<input name="name" required></label>
+      <label>型番・JAN<input name="model_no"></label>
+      <label>カテゴリ<input name="category" list="dl-category"></label>
+      <label>状態ランク
+        <select name="condition_rank">
+          <option value=""></option><option>S</option><option>A</option><option>B</option>
+          <option>C</option><option>D</option><option>J</option>
+        </select>
+      </label>
+      <label>数量<input name="quantity" type="number" min="1" value="1"></label>
+      <label>買取日<input name="purchase_date" type="date"></label>
+      <label>買取価格(円)<input name="purchase_price" type="number" inputmode="numeric" min="0"></label>
+      <label>仕入先・買取元<input name="supplier" list="dl-supplier"></label>
+      <label>保管場所<input name="location" list="dl-location"></label>
+      <label>販売予定価格(円)<input name="list_price" type="number" inputmode="numeric" min="0"></label>
+      <label>ステータス
+        <select name="status">
+          <option value="in_stock">在庫</option>
+          <option value="listed">出品中</option>
+          <option value="sold">売却済</option>
+        </select>
+      </label>
+      <fieldset class="full sold-fields">
+        <legend>販売情報</legend>
+        <label>販売日<input name="sold_date" type="date"></label>
+        <label>販売価格(円)<input name="sold_price" type="number" inputmode="numeric" min="0"></label>
+        <label>手数料・送料(円)<input name="fees" type="number" inputmode="numeric" min="0"></label>
+        <p class="profit-preview muted full"></p>
+      </fieldset>
+      <label class="full">メモ<textarea name="notes" rows="3"></textarea></label>
+      <p id="form-error" class="error full" role="alert"></p>
+      <div class="actions full">
+        <button type="button" id="btn-delete" class="danger">削除</button>
+        <span class="spacer"></span>
+        <button type="button" id="btn-cancel">キャンセル</button>
+        <button type="submit" class="primary">保存</button>
+      </div>
+    </form>
+  </dialog>
+  <datalist id="dl-category"></datalist>
+  <datalist id="dl-supplier"></datalist>
+  <datalist id="dl-location"></datalist>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>

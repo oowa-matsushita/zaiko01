@@ -1,0 +1,10 @@
+name = "zaiko01"
+compatibility_date = "2026-10-01"
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "zaiko01-db"
+# Cloudflareで D1 を作成したら、表示された database_id に置き換えてください
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"

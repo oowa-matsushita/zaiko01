@@ -1,0 +1,12 @@
+{
+  "name": "zaiko01",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler pages dev",
+    "db:migrate:local": "wrangler d1 migrations apply zaiko01-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply zaiko01-db --remote"
+  },
+  "devDependencies": {
+    "wrangler": "4.157.0"
+  }
+}
