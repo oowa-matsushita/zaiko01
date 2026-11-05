@@ -3,6 +3,10 @@ main = "src/worker.js"
 compatibility_date = "2026-10-01"
 workers_dev = true
 preview_urls = false
+# ログイン用の LOGIN_ID / LOGIN_PASSWORD / SESSION_SECRET はダッシュボードの
+# 「変数とシークレット」で管理する（パスワードをGitHubに残さないため、ここには書かない）。
+# ダッシュボードで追加した変数がデプロイで消されないようにする
+keep_vars = true
 
 [assets]
 directory = "public"
