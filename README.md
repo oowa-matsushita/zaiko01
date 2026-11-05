@@ -26,7 +26,7 @@ migrations/        D1 のテーブル定義
 ### 1. D1 データベースを作る
 Cloudflare ダッシュボード → **ストレージとデータベース → D1** →「データベースを作成」
 - 名前：`zaiko01-db`
-- 作成後、**コンソール**タブで `migrations/0001_init.sql` の中身を貼り付けて実行
+- 作成後、**Console** タブで `migrations/0001_init.sql` の CREATE 文を**1行ずつ**貼り付けて Execute（コンソールは改行がつながるため）
 
 （または PC で `npx wrangler d1 create zaiko01-db` → `npm run db:migrate:remote`）
 
