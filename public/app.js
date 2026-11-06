@@ -17,7 +17,8 @@ const mdDate = (d) => {
   const thisYear = new Date(Date.now() + 9 * 3600e3).getUTCFullYear();
   return `${y !== thisYear ? y + '年' : ''}${m}月${day}日`;
 };
-const state = { q: '', event_date: '', shipped_date: '', items: [] };
+const state = { q: '', event_date: '', shipped_date: '', beforeShip: false, items: [] };
+try { state.beforeShip = localStorage.getItem('zaiko-before-ship') === '1'; } catch { /* 既定はオフ */ }
 
 async function api(path, opts = {}) {
   const res = await fetch(path, { ...opts, headers: { 'content-type': 'application/json', ...(opts.headers || {}) } });
@@ -82,6 +83,7 @@ async function load() {
   if (state.q) p.set('q', state.q);
   if (state.event_date) p.set('event_date', state.event_date);
   if (state.shipped_date) p.set('shipped_date', state.shipped_date);
+  if (state.beforeShip) p.set('before_ship', jstToday());
   loadDateCounts();
   try {
     const data = await api('/api/items?' + p);
@@ -210,7 +212,7 @@ function render({ total }) {
   }
   renderHead();
   if (!state.items.length) {
-    setBody(`<tbody><tr><td class="empty" colspan="${colCount()}">${state.q || state.event_date || state.shipped_date ? '該当する車両がありません' : 'まだ登録がありません。「＋ 買取登録」から追加してください'}</td></tr></tbody>`);
+    setBody(`<tbody><tr><td class="empty" colspan="${colCount()}">${state.q || state.event_date || state.shipped_date || state.beforeShip ? '該当する車両がありません' : 'まだ登録がありません。「＋ 買取登録」から追加してください'}</td></tr></tbody>`);
     return;
   }
   const rows = sortedItems();
@@ -669,4 +671,15 @@ $('#btn-print').addEventListener('click', () => {
   const items = sortedItems();
   if (!items.length) { toast('表に車両がありません', true); return; }
   openPdfWindow(items, LIST_FIELDS, '在庫一覧');
+});
+
+// ---- 出庫前のみ表示（出庫日が今日以降、または未定の車両だけ） ----
+const beforeBtn = $('#btn-before-ship');
+const updateBeforeBtn = () => beforeBtn.setAttribute('aria-pressed', String(state.beforeShip));
+updateBeforeBtn();
+beforeBtn.addEventListener('click', () => {
+  state.beforeShip = !state.beforeShip;
+  try { localStorage.setItem('zaiko-before-ship', state.beforeShip ? '1' : '0'); } catch { /* 無視 */ }
+  updateBeforeBtn();
+  load();
 });

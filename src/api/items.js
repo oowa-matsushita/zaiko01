@@ -28,6 +28,12 @@ export async function onRequestGet({ request, env }) {
   if (from) { where.push(`purchase_date >= ?${args.length + 1}`); args.push(from); }
   const to = p.get('to');
   if (to) { where.push(`purchase_date <= ?${args.length + 1}`); args.push(to); }
+  // 出庫前のみ：出庫日が今日以降、または出庫日が未定（today は日本時間 YYYY-MM-DD）
+  const before = p.get('before_ship');
+  if (before && /^\d{4}-\d{2}-\d{2}$/.test(before)) {
+    where.push(`(shipped_date IS NULL OR shipped_date = '' OR shipped_date >= ?${args.length + 1})`);
+    args.push(before);
+  }
   for (const f of ['event_date', 'shipped_date', 'venue']) {
     const v = p.get(f);
     if (v) { where.push(`${f} = ?${args.length + 1}`); args.push(v); }
