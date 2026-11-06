@@ -222,3 +222,5 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .toggle[aria-pressed="true"]::before { content: "☑ "; }
 /* ボタン類は角を四角に */
 button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important; }
+/* 色の列は狭く（長い色名は折り返す） */
+#tbl th[data-key="color"], #tbl td[data-key="color"] { width: 3.5em; max-width: 4.5em; white-space: normal; overflow-wrap: anywhere; }
