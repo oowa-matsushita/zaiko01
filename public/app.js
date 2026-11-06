@@ -51,36 +51,41 @@ function shippedDates() {
   return Array.from({ length: 7 }, (_, i) => addDays(t, i));
 }
 
-function fillDateBoxes(box, field, dates, counts) {
-  const current = state[field];
-  const extra = current && !dates.includes(current) ? [current] : [];
-  box.innerHTML = `<button type="button" class="date-box all" data-date="" aria-pressed="${!current}">
-      <span class="n">すべて</span></button>` +
-    [...dates, ...extra].map((d) => {
-      const n = counts[d] || 0;
-      const cls = [n ? '' : 'zero', dow(d) === 6 ? 'sat' : dow(d) === 0 ? 'sun' : ''].join(' ');
-      return `<button type="button" class="date-box ${cls}" data-date="${d}" aria-pressed="${current === d}">
-        <span class="d">${shortDate(d)}</span><span class="n">${n}<small>台</small></span></button>`;
-    }).join('');
+// 開催日（金・土）と出庫日（7日分）を、同じ日付が上下にそろう表にする。
+// 列はどちらかに枠がある日付だけ。該当しない側は空きマス
+function renderDateGrid(counts) {
+  const ev = eventDates(), sh = shippedDates();
+  const extra = [state.event_date, state.shipped_date].filter((d) => d && !ev.includes(d) && !sh.includes(d));
+  const cols = [...new Set([...ev, ...sh, ...extra])].sort();
+  const box = (field, d) => {
+    const n = counts[field][d] || 0;
+    const cls = [n ? '' : 'zero', dow(d) === 6 ? 'sat' : dow(d) === 0 ? 'sun' : ''].join(' ');
+    return `<button type="button" class="date-box ${cls}" data-field="${field}" data-date="${d}" aria-pressed="${state[field] === d}">
+      <span class="d">${shortDate(d)}</span><span class="n">${n}<small>台</small></span></button>`;
+  };
+  const row = (field, label, list) =>
+    `<span class="df-label">${label}</span>` +
+    `<button type="button" class="date-box all" data-field="${field}" data-date="" aria-pressed="${!state[field]}"><span class="n">すべて</span></button>` +
+    cols.map((d) => (list.includes(d) || state[field] === d ? box(field, d) : '<span class="date-empty"></span>')).join('');
+  const g = $('#f-dates');
+  g.style.gridTemplateColumns = `3.5em 76px repeat(${cols.length}, 76px)`;
+  g.innerHTML = row('event_date', '開催日', ev) + row('shipped_date', '出庫日', sh);
 }
 
 async function loadDateCounts() {
   try {
-    const c = await api('/api/date-counts');
-    fillDateBoxes($('#f-event'), 'event_date', eventDates(), c.event_date);
-    fillDateBoxes($('#f-shipped'), 'shipped_date', shippedDates(), c.shipped_date);
+    renderDateGrid(await api('/api/date-counts'));
   } catch { /* 台数が取れなくても一覧は表示する */ }
 }
 
 // 枠をクリックで絞り込み（選択中の枠をもう一度押すと解除）
-for (const [id, field] of [['#f-event', 'event_date'], ['#f-shipped', 'shipped_date']]) {
-  $(id).addEventListener('click', (e) => {
-    const b = e.target.closest('.date-box');
-    if (!b) return;
-    state[field] = state[field] === b.dataset.date ? '' : b.dataset.date;
-    load();
-  });
-}
+$('#f-dates').addEventListener('click', (e) => {
+  const b = e.target.closest('.date-box');
+  if (!b) return;
+  const field = b.dataset.field;
+  state[field] = state[field] === b.dataset.date ? '' : b.dataset.date;
+  load();
+});
 
 async function load() {
   const p = new URLSearchParams({ sort: 'created_desc', limit: '1000' });
