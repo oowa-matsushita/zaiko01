@@ -64,6 +64,7 @@ const HEAD = {
   mileage: ['走行距離', '走行'],
   type: ['型式'],
   chassis: ['車台番号', '車体番号'],
+  purchase: ['仕入金額', '買取金額', '仕入価格', '買取価格'],
 };
 
 export function csvToItems(rows) {
@@ -88,6 +89,7 @@ export function csvToItems(rows) {
       mileage: Number.isFinite(km) && km >= 0 && get(r, 'mileage') !== '' ? km : null,
       mileage_unit: 'km',
       first_reg: get(r, 'first_reg'),
+      purchase_price: (() => { const v = Number(get(r, 'purchase').replace(/[^\d]/g, '')); return get(r, 'purchase') !== '' && Number.isFinite(v) ? v : null; })(),
     };
   });
 }

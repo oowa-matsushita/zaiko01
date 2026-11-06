@@ -3,13 +3,13 @@
 export const FIELDS = [
   'name', 'first_reg', 'chassis_no', 'color', 'color_code', 'mileage', 'mileage_unit',
   'sales_points', 'has_warranty', 'has_manual',
-  'own_company', 'own_date', 'venue', 'event_date', 'shipped_date',
+  'own_company', 'own_date', 'venue', 'event_date', 'shipped_date', 'landing_price',
   'model_no', 'category', 'condition_rank', 'quantity',
   'purchase_date', 'purchase_price', 'supplier', 'location', 'list_price',
   'status', 'sold_date', 'sold_price', 'fees', 'notes',
 ];
-const FIELD_LABELS = { mileage: '走行距離', purchase_price: '買取価格', list_price: '販売予定価格', sold_price: '販売価格', fees: '手数料', quantity: '数量' };
-const INT_FIELDS = new Set(['quantity', 'purchase_price', 'list_price', 'sold_price', 'fees', 'mileage']);
+const FIELD_LABELS = { mileage: '走行距離', landing_price: '着地予想', purchase_price: '買取金額', list_price: '販売予定価格', sold_price: '販売価格', fees: '手数料', quantity: '数量' };
+const INT_FIELDS = new Set(['quantity', 'purchase_price', 'list_price', 'sold_price', 'fees', 'mileage', 'landing_price']);
 const BOOL_FIELDS = new Set(['has_warranty', 'has_manual']);
 export const MILEAGE_UNITS = ['km', 'mile'];
 export const VENUES = ['名古屋', '静岡', '廃車'];
@@ -31,6 +31,7 @@ const ADDED_COLUMNS = {
   event_date: 'TEXT',    // 開催日
   shipped_date: 'TEXT',  // 出庫日
   first_reg: 'TEXT',     // 初度登録（例：平成24年06月）
+  landing_price: 'INTEGER', // 着地予想（円）
 };
 let schemaReady = null;
 export function ensureSchema(db) {

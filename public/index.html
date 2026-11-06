@@ -18,7 +18,7 @@
   </header>
 
   <section class="filters">
-    <input id="q" type="search" placeholder="車名・車台番号・色・セールスポイントなどで検索">
+    <input id="q" type="search" placeholder="車名・車台番号・色・メモなどで検索">
     <div class="date-filters">
       <div class="df-row"><span class="df-label">開催日</span><div id="f-event" class="date-boxes" role="group" aria-label="開催日"></div></div>
       <div class="df-row"><span class="df-label">出庫日</span><div id="f-shipped" class="date-boxes" role="group" aria-label="出庫日"></div></div>
@@ -76,6 +76,8 @@
         </span>
         <small class="mileage-conv"></small>
       </label>
+      <label>買取金額(円)<input name="purchase_price" inputmode="numeric" autocomplete="off" placeholder="例：500000"></label>
+      <label>着地予想(円)<input name="landing_price" inputmode="numeric" autocomplete="off" placeholder="例：650000"></label>
       <label>自社名<input name="own_date" type="date"></label>
       <label>会場
         <select name="venue">
@@ -87,14 +89,6 @@
       </label>
       <label>開催日<input name="event_date" type="date"></label>
       <label>出庫日<input name="shipped_date" type="date"></label>
-      <div class="full field-voice">
-        <div class="voice-head">
-          <label for="f-sales">セールスポイント</label>
-          <button type="button" class="mic" data-target="f-sales" aria-pressed="false">🎤 音声入力</button>
-        </div>
-        <textarea id="f-sales" name="sales_points" rows="4" placeholder="例：ワンオーナー、禁煙車、記録簿あり、スタッドレス付き"></textarea>
-        <small class="voice-status muted" aria-live="polite"></small>
-      </div>
       <div class="full checks">
         <label class="check"><input type="checkbox" name="has_warranty"> 保証書あり</label>
         <label class="check"><input type="checkbox" name="has_manual"> 取扱説明書あり</label>

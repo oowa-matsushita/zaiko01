@@ -215,3 +215,5 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 #up-tbl .small { font-size: .75rem; margin-top: 2px; white-space: normal; }
 .check-all { display: flex; align-items: center; gap: 6px; font-size: .9rem; }
 .check-all input { width: auto; }
+.pill.st-fill { background: #dbeafe; color: #1e40af; }
+.up-box .check-all { font-size: .85rem; text-align: left; }

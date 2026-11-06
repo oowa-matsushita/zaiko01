@@ -4,6 +4,7 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const STATUS = {
   new: ['新規', 'st-new'],
+  fill: ['空欄を補う', 'st-fill'],
   exists: ['既存のためスキップ', 'st-skip'],
   duplicate: ['ファイル内で重複', 'st-skip'],
   error: ['エラー', 'st-err'],
@@ -33,7 +34,7 @@ async function readFile(file) {
     items = csvToItems(rows);
     if (!items.length) throw new Error('車両データがありません');
     // まず判定だけ（保存はしない）
-    const r = await api('/api/import', { items, dry_run: true });
+    const r = await api('/api/import', { items, dry_run: true, fill_empty: $('#fill-empty').checked });
     results = r.results;
     render(r);
   } catch (e) {
@@ -45,25 +46,27 @@ function render(r) {
   $('#preview').hidden = false;
   $('#summary').innerHTML = `
     <span class="pill st-new">新規 ${r.new} 台</span>
+    ${r.fill ? `<span class="pill st-fill">空欄を補う ${r.fill} 台</span>` : ''}
     <span class="pill st-skip">既存（スキップ） ${r.exists} 台</span>
     ${r.duplicate ? `<span class="pill st-skip">ファイル内重複 ${r.duplicate} 台</span>` : ''}
     ${r.error ? `<span class="pill st-err">エラー ${r.error} 台</span>` : ''}
     <span class="muted">（全 ${items.length} 行）</span>`;
-  $('#btn-import').textContent = `新規 ${r.new} 台を追加する`;
-  $('#btn-import').disabled = !r.new;
+  $('#btn-import').textContent = r.fill ? `新規 ${r.new} 台を追加・${r.fill} 台の空欄を補う` : `新規 ${r.new} 台を追加する`;
+  $('#btn-import').disabled = !r.new && !r.fill;
   const onlyNew = $('#only-new').checked;
   const byLine = new Map(results.map((x) => [x.line, x]));
   $('#up-tbl tbody').innerHTML = items.map((it) => {
     const res = byLine.get(it.line) || { status: 'error' };
-    if (onlyNew && res.status !== 'new') return '';
+    if (onlyNew && res.status !== 'new' && res.status !== 'fill') return '';
     const [label, cls] = STATUS[res.status];
     return `<tr class="${cls}">
       <td class="num">${it.line}</td>
       <td><span class="pill ${cls}">${label}</span>${res.message ? `<div class="muted small">${esc(res.message)}</div>` : ''}</td>
       <td>${esc(it.first_reg)}</td><td>${esc(it.name)}</td><td>${esc(it.chassis_no)}</td><td>${esc(it.color)}</td><td>${esc(it.color_code)}</td>
       <td class="num">${it.mileage != null ? Number(it.mileage).toLocaleString('ja-JP') + 'km' : ''}</td>
+      <td class="num">${it.purchase_price ? '¥' + Number(it.purchase_price).toLocaleString('ja-JP') : ''}</td>
 </tr>`;
-  }).join('') || `<tr><td colspan="8" class="empty">新規の車両はありません</td></tr>`;
+  }).join('') || `<tr><td colspan="9" class="empty">新規の車両はありません</td></tr>`;
 }
 
 $('#file').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) readFile(f); e.target.value = ''; });
@@ -80,7 +83,7 @@ $('#btn-cancel-up').addEventListener('click', () => { $('#preview').hidden = tru
 
 function summaryFrom(res) {
   const c = (s) => res.filter((x) => x.status === s).length;
-  return { new: c('new'), exists: c('exists'), duplicate: c('duplicate'), error: c('error') };
+  return { new: c('new'), fill: c('fill'), exists: c('exists'), duplicate: c('duplicate'), error: c('error') };
 }
 
 $('#btn-import').addEventListener('click', async () => {
@@ -88,15 +91,25 @@ $('#btn-import').addEventListener('click', async () => {
   btn.disabled = true;
   btn.textContent = '追加しています…';
   try {
-    const r = await api('/api/import', { items, dry_run: false });
+    const r = await api('/api/import', { items, dry_run: false, fill_empty: $('#fill-empty').checked });
     results = r.results;
-    toast(`${r.added} 台を追加しました（スキップ ${r.exists + r.duplicate} 台）`);
+    toast(`${r.added} 台を追加${r.filled ? `・${r.filled} 台の空欄を補いました` : 'しました'}（スキップ ${r.exists + r.duplicate} 台）`);
     $('#preview').hidden = true;
     $('#summary').textContent = '';
     $('#drop').insertAdjacentHTML('afterend',
-      `<p class="up-done">✅ ${r.added} 台を在庫に追加しました。スキップ ${r.exists + r.duplicate} 台${r.error ? `、エラー ${r.error} 台` : ''}。<a href="/">在庫一覧を見る</a></p>`);
+      `<p class="up-done">✅ ${r.added} 台を在庫に追加しました。${r.filled ? `${r.filled} 台の空欄を補いました。` : ''}スキップ ${r.exists + r.duplicate} 台${r.error ? `、エラー ${r.error} 台` : ''}。<a href="/">在庫一覧を見る</a></p>`);
   } catch (e) {
     toast(`追加できませんでした：${e.message}`, true);
     render(summaryFrom(results));
   }
+});
+
+// 「空欄を補う」を切り替えたら判定し直す
+$('#fill-empty').addEventListener('change', async () => {
+  if (!items.length) return;
+  try {
+    const r = await api('/api/import', { items, dry_run: true, fill_empty: $('#fill-empty').checked });
+    results = r.results;
+    render(r);
+  } catch (e) { toast(e.message, true); }
 });
