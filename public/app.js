@@ -17,9 +17,10 @@ const mdDate = (d) => {
   const thisYear = new Date(Date.now() + 9 * 3600e3).getUTCFullYear();
   return `${y !== thisYear ? y + '年' : ''}${m}月${day}日`;
 };
-const state = { q: '', event_date: '', shipped_date: '', beforeShip: false, own: '', items: [] };
+const state = { q: '', event_date: '', shipped_date: '', beforeShip: true, own: '', items: [] };
 try {
-  state.beforeShip = localStorage.getItem('zaiko-before-ship') === '1';
+  // 出庫前のみ表示は既定でオン（自分でオフにした場合だけオフのまま）
+  state.beforeShip = localStorage.getItem('zaiko-before-ship-v2') !== '0';
   state.own = localStorage.getItem('zaiko-own') || '';
 } catch { /* 既定はオフ */ }
 
@@ -693,7 +694,7 @@ const updateBeforeBtn = () => beforeBtn.setAttribute('aria-pressed', String(stat
 updateBeforeBtn();
 beforeBtn.addEventListener('click', () => {
   state.beforeShip = !state.beforeShip;
-  try { localStorage.setItem('zaiko-before-ship', state.beforeShip ? '1' : '0'); } catch { /* 無視 */ }
+  try { localStorage.setItem('zaiko-before-ship-v2', state.beforeShip ? '1' : '0'); } catch { /* 無視 */ }
   updateBeforeBtn();
   load();
 });

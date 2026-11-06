@@ -120,7 +120,7 @@ font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
 form{width:min(360px,100%);display:grid;gap:14px;padding:24px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
 h1{font-size:1.2rem;margin:0 0 4px;text-align:center}label{display:grid;gap:4px;font-size:.9rem;color:var(--muted)}
 input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text)}
-button{font:inherit;font-size:1rem;padding:12px;border:0;border-radius:8px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
+button{font:inherit;font-size:1rem;padding:12px;border:0;border-radius:0;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
 button:disabled{opacity:.6}.err{color:var(--danger);margin:0;font-size:.9rem;min-height:1.2em}
 </style></head><body>
 <form id="f" autocomplete="on">

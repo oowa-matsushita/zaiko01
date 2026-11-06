@@ -220,3 +220,5 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .toggle::before { content: "☐ "; }
 .toggle[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 .toggle[aria-pressed="true"]::before { content: "☑ "; }
+/* ボタン類は角を四角に */
+button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important; }
