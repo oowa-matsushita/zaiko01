@@ -60,9 +60,9 @@ function render(r) {
     return `<tr class="${cls}">
       <td class="num">${it.line}</td>
       <td><span class="pill ${cls}">${label}</span>${res.message ? `<div class="muted small">${esc(res.message)}</div>` : ''}</td>
-      <td>${esc(it.name)}</td><td>${esc(it.chassis_no)}</td><td>${esc(it.color)}</td><td>${esc(it.color_code)}</td>
+      <td>${esc(it.first_reg)}</td><td>${esc(it.name)}</td><td>${esc(it.chassis_no)}</td><td>${esc(it.color)}</td><td>${esc(it.color_code)}</td>
       <td class="num">${it.mileage != null ? Number(it.mileage).toLocaleString('ja-JP') + 'km' : ''}</td>
-      <td class="memo">${esc(it.notes)}</td></tr>`;
+</tr>`;
   }).join('') || `<tr><td colspan="8" class="empty">新規の車両はありません</td></tr>`;
 }
 

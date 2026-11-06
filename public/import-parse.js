@@ -78,13 +78,7 @@ export function csvToItems(rows) {
   return rows.slice(1).map((r, i) => {
     const { color, color_code } = splitColor(get(r, 'color'));
     const km = Number(get(r, 'mileage').replace(/[^\d-]/g, ''));
-    const memo = [
-      get(r, 'stock_no') && `在庫No ${get(r, 'stock_no')}`,
-      get(r, 'maker') && idx.model >= 0 && `メーカー ${get(r, 'maker')}`,
-      get(r, 'type') && `型式 ${get(r, 'type')}`,
-      get(r, 'first_reg') && `初度 ${get(r, 'first_reg')}`,
-      get(r, 'inspection') && `車検 ${get(r, 'inspection')}`,
-    ].filter(Boolean).join('／');
+
     return {
       line: i + 2,
       name: get(r, 'model') || get(r, 'maker'),
@@ -93,7 +87,7 @@ export function csvToItems(rows) {
       color_code,
       mileage: Number.isFinite(km) && km >= 0 && get(r, 'mileage') !== '' ? km : null,
       mileage_unit: 'km',
-      notes: memo,
+      first_reg: get(r, 'first_reg'),
     };
   });
 }

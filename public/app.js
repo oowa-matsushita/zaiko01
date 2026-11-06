@@ -94,6 +94,7 @@ async function load() {
 // 表の列: [キー, 見出し, 種類]
 const COLS = [
   ['id', 'No.', 'rowno'],
+  ['first_reg', '初度登録'],
   ['name', '車名', 'sticky'],
   ['chassis_no', '車台番号'],
   ['color', '色'],
@@ -110,12 +111,13 @@ const COLS = [
   ['created_at', '登録日'],
 ];
 const COL = Object.fromEntries(COLS.map(([k, label, cls]) => [k, { label, cls }]));
+COL.blank = { label: '', cls: 'blank' };
 // 表示レイアウト。2段は縦型モニター向けに1台を2行で表示（No. は2行分）
 const LAYOUTS = {
   1: [COLS.map((c) => c[0])],
   2: [
-    ['id', 'name', 'chassis_no', 'color', 'color_code', 'mileage', 'has_warranty', 'sales_points'],
-    ['own_date', 'venue', 'event_date', 'shipped_date', 'created_at', 'has_manual', 'notes'],
+    ['id', 'first_reg', 'name', 'chassis_no', 'color', 'color_code', 'mileage', 'has_warranty', 'sales_points'],
+    ['blank', 'own_date', 'venue', 'event_date', 'shipped_date', 'created_at', 'has_manual', 'notes'],
   ],
 };
 let layoutKey = '2';
@@ -123,8 +125,18 @@ try { layoutKey = localStorage.getItem('zaiko-layout') || '2'; } catch { /* 保�
 const layout = () => LAYOUTS[layoutKey] || LAYOUTS[2];
 const sortState = { key: 'id', dir: -1 };
 // 並び替え用の値（マイルは km に換算して比較）
+// 和暦（昭和・平成・令和）の年月を並び替え用の数値に（例：平成24年06月 → 201206）
+const ERA = { 昭和: 1925, 平成: 1988, 令和: 2018 };
+function warekiNum(s) {
+  const m = String(s || '').match(/(昭和|平成|令和)\s*(\d+|元)\s*年?\s*(\d+)?/);
+  if (m) return (ERA[m[1]] + (m[2] === '元' ? 1 : Number(m[2]))) * 100 + Number(m[3] || 0);
+  const w = String(s || '').match(/(\d{4})\D*(\d{1,2})?/);
+  return w ? Number(w[1]) * 100 + Number(w[2] || 0) : null;
+}
 const sortVal = (it, k) => k === 'mileage'
   ? (it.mileage == null ? null : it.mileage_unit === 'mile' ? it.mileage * KM_PER_MILE : it.mileage)
+  : k === 'first_reg' ? warekiNum(it.first_reg)
+  : k === 'blank' ? null
   : it[k];
 const cellHtml = (it, k) => {
   switch (k) {
@@ -201,6 +213,7 @@ $('#tbl thead').addEventListener('click', (e) => {
   const th = e.target.closest('th');
   if (!th) return;
   const k = th.dataset.key;
+  if (k === 'blank') return;
   sortState.dir = sortState.key === k ? -sortState.dir : 1;
   sortState.key = k;
   render({ total: state.items.length });
@@ -283,7 +296,7 @@ document.addEventListener('click', (e) => {
 });
 
 // ---- 一覧での直接編集（ダブルクリック／ダブルタップ） ----
-const EDITABLE = new Set(['name', 'chassis_no', 'color', 'color_code', 'mileage', 'own_date', 'venue',
+const EDITABLE = new Set(['first_reg', 'name', 'chassis_no', 'color', 'color_code', 'mileage', 'own_date', 'venue',
   'event_date', 'shipped_date', 'sales_points', 'has_warranty', 'has_manual', 'notes']);
 const DATE_KEYS = new Set(['own_date', 'event_date', 'shipped_date']);
 const VENUES = ['名古屋', '静岡', '廃車'];

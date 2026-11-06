@@ -1,7 +1,7 @@
 // 在庫アイテムの共通処理
 // name = 車名
 export const FIELDS = [
-  'name', 'chassis_no', 'color', 'color_code', 'mileage', 'mileage_unit',
+  'name', 'first_reg', 'chassis_no', 'color', 'color_code', 'mileage', 'mileage_unit',
   'sales_points', 'has_warranty', 'has_manual',
   'own_company', 'own_date', 'venue', 'event_date', 'shipped_date',
   'model_no', 'category', 'condition_rank', 'quantity',
@@ -30,6 +30,7 @@ const ADDED_COLUMNS = {
   venue: 'TEXT',         // 会場
   event_date: 'TEXT',    // 開催日
   shipped_date: 'TEXT',  // 出庫日
+  first_reg: 'TEXT',     // 初度登録（例：平成24年06月）
 };
 let schemaReady = null;
 export function ensureSchema(db) {
@@ -40,8 +41,28 @@ export function ensureSchema(db) {
     if (adds.length) {
       await db.batch(adds.map(([c, t]) => db.prepare(`ALTER TABLE items ADD COLUMN ${c} ${t}`)));
     }
+    if (adds.some(([c]) => c === 'first_reg')) await moveImportMemo(db);
   })().catch((e) => { schemaReady = null; throw e; });
   return schemaReady;
+}
+// CSV取り込みで以前メモに入れていた「在庫No …／メーカー …／型式 …／初度 …／車検 …」を整理する。
+// 初度は first_reg 列へ移し、それ以外の自動で入れた項目はメモから消す（1回だけ実行）
+const MEMO_KEYS = ['在庫No', 'メーカー', '型式', '初度', '車検'];
+async function moveImportMemo(db) {
+  const { results } = await db.prepare("SELECT id, notes FROM items WHERE notes LIKE '在庫No %' OR notes LIKE '%初度 %'").all();
+  const stmts = [];
+  for (const r of results) {
+    const parts = String(r.notes).split('／');
+    let first = null;
+    const rest = parts.filter((p) => {
+      const key = MEMO_KEYS.find((k) => p.startsWith(k + ' '));
+      if (key === '初度') first = p.slice(3).trim();
+      return !key;
+    });
+    stmts.push(db.prepare('UPDATE items SET first_reg = COALESCE(first_reg, ?2), notes = ?3 WHERE id = ?1')
+      .bind(r.id, first, rest.join('／') || null));
+  }
+  for (let i = 0; i < stmts.length; i += 100) await db.batch(stmts.slice(i, i + 100));
 }
 export const STATUSES = ['in_stock', 'listed', 'sold'];
 
