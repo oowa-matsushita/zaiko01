@@ -17,8 +17,11 @@ const mdDate = (d) => {
   const thisYear = new Date(Date.now() + 9 * 3600e3).getUTCFullYear();
   return `${y !== thisYear ? y + '年' : ''}${m}月${day}日`;
 };
-const state = { q: '', event_date: '', shipped_date: '', beforeShip: false, items: [] };
-try { state.beforeShip = localStorage.getItem('zaiko-before-ship') === '1'; } catch { /* 既定はオフ */ }
+const state = { q: '', event_date: '', shipped_date: '', beforeShip: false, own: '', items: [] };
+try {
+  state.beforeShip = localStorage.getItem('zaiko-before-ship') === '1';
+  state.own = localStorage.getItem('zaiko-own') || '';
+} catch { /* 既定はオフ */ }
 
 async function api(path, opts = {}) {
   const res = await fetch(path, { ...opts, headers: { 'content-type': 'application/json', ...(opts.headers || {}) } });
@@ -84,6 +87,7 @@ async function load() {
   if (state.event_date) p.set('event_date', state.event_date);
   if (state.shipped_date) p.set('shipped_date', state.shipped_date);
   if (state.beforeShip) p.set('before_ship', jstToday());
+  if (state.own) p.set('own', state.own);
   loadDateCounts();
   try {
     const data = await api('/api/items?' + p);
@@ -221,7 +225,7 @@ function render({ total }) {
   }
   renderHead();
   if (!state.items.length) {
-    setBody(`<tbody><tr><td class="empty" colspan="${colCount()}">${state.q || state.event_date || state.shipped_date || state.beforeShip ? '該当する車両がありません' : 'まだ登録がありません。「＋ 買取登録」から追加してください'}</td></tr></tbody>`);
+    setBody(`<tbody><tr><td class="empty" colspan="${colCount()}">${state.q || state.event_date || state.shipped_date || state.beforeShip || state.own ? '該当する車両がありません' : 'まだ登録がありません。「＋ 買取登録」から追加してください'}</td></tr></tbody>`);
     return;
   }
   const rows = sortedItems();
@@ -693,3 +697,15 @@ beforeBtn.addEventListener('click', () => {
   updateBeforeBtn();
   load();
 });
+
+// ---- 自社名済のみ／自社名待ち（自社名の日付が入っているか） ----
+// どちらか一方だけ選べる。もう一度押すと解除
+const ownBtns = document.querySelectorAll('[data-own]');
+const updateOwnBtns = () => ownBtns.forEach((b) => b.setAttribute('aria-pressed', String(state.own === b.dataset.own)));
+updateOwnBtns();
+ownBtns.forEach((b) => b.addEventListener('click', () => {
+  state.own = state.own === b.dataset.own ? '' : b.dataset.own;
+  try { localStorage.setItem('zaiko-own', state.own); } catch { /* 無視 */ }
+  updateOwnBtns();
+  load();
+}));

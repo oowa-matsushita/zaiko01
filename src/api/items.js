@@ -34,6 +34,10 @@ export async function onRequestGet({ request, env }) {
     where.push(`(shipped_date IS NULL OR shipped_date = '' OR shipped_date >= ?${args.length + 1})`);
     args.push(before);
   }
+  // 自社名（日付）が入っているかで絞り込み：own=done 入力済み / own=wait 未入力
+  const own = p.get('own');
+  if (own === 'done') where.push("(own_date IS NOT NULL AND own_date <> '')");
+  if (own === 'wait') where.push("(own_date IS NULL OR own_date = '')");
   for (const f of ['event_date', 'shipped_date', 'venue']) {
     const v = p.get(f);
     if (v) { where.push(`${f} = ?${args.length + 1}`); args.push(v); }
