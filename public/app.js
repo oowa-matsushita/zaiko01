@@ -137,6 +137,14 @@ function warekiNum(s) {
   const w = String(s || '').match(/(\d{4})\D*(\d{1,2})?/);
   return w ? Number(w[1]) * 100 + Number(w[2] || 0) : null;
 }
+// 表示用：平成24年06月 → H24/6、令和03年11月 → R3/11、昭和 → S（データはそのまま）
+const ERA_ABBR = { 昭和: 'S', 平成: 'H', 令和: 'R' };
+function shortWareki(s) {
+  const m = String(s || '').match(/(昭和|平成|令和)\s*(\d+|元)\s*年?\s*(\d+)?/);
+  if (!m) return s || '';
+  const y = m[2] === '元' ? 1 : Number(m[2]);
+  return `${ERA_ABBR[m[1]]}${y}${m[3] ? '/' + Number(m[3]) : ''}`;
+}
 const sortVal = (it, k) => k === 'mileage'
   ? (it.mileage == null ? null : it.mileage_unit === 'mile' ? it.mileage * KM_PER_MILE : it.mileage)
   : k === 'first_reg' ? warekiNum(it.first_reg)
@@ -144,6 +152,7 @@ const sortVal = (it, k) => k === 'mileage'
   : it[k];
 const cellHtml = (it, k) => {
   switch (k) {
+    case 'first_reg': return esc(shortWareki(it.first_reg));
     case 'mileage': return esc(fmtMileage(it) ?? '');
     case 'purchase_price': case 'landing_price': return it[k] ? esc(yen(it[k])) : '';
     case 'has_warranty': case 'has_manual': return it[k] ? '✓' : '';
@@ -437,6 +446,7 @@ const LIST_FIELDS = COLS.filter(([k]) => k !== 'id').map(([k, l]) => [k, l]);
 const WIDE_FIELDS = new Set(['notes']);
 const CENTER_FIELDS = new Set(['venue', 'has_warranty', 'has_manual']);
 const reqVal = (it, k) => k === 'mileage' ? (fmtMileage(it) ?? '')
+  : k === 'first_reg' ? shortWareki(it.first_reg)
   : k === 'has_warranty' || k === 'has_manual' ? (it[k] ? '✓' : '')
   : k === 'created_at' ? mdDate(jstDate(it.created_at))
   : k === 'purchase_price' || k === 'landing_price' ? (it[k] ? yen(it[k]) : '')
