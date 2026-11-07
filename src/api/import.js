@@ -3,6 +3,7 @@ import { clean, json } from '../lib.js';
 // POST /api/import  { items: [...], dry_run: true|false, fill_empty: true|false }
 // 車台番号が在庫にある車両・ファイル内で重複する車両はスキップし、新規だけ追加する（上書きしない）
 // fill_empty=true のときだけ、既存車両の「空欄の項目」を補う（入力済みの項目は変えない）
+// update_list_price=true のときは、既存車両の予定価格だけ CSV の値で上書きする
 const FILLABLE = ['first_reg', 'color', 'color_code', 'mileage', 'purchase_price', 'list_price'];
 const isEmpty = (k, v) => v == null || v === '' || ((k === 'purchase_price' || k === 'list_price') && v === 0);
 const normChassis = (s) => String(s ?? '').normalize('NFKC').toUpperCase()
@@ -32,16 +33,26 @@ export async function onRequestPost({ request, env }) {
     if (!key) { results.push({ line, status: 'error', message: '車台番号がありません' }); continue; }
     if (have.has(key)) {
       const e = have.get(key);
-      if (body.fill_empty && !seen.has(key)) {
+      if ((body.fill_empty || body.update_list_price) && !seen.has(key)) {
         let incoming = {};
         try { incoming = clean({ ...raw, chassis_no: key }); } catch { /* 補えない */ }
-        const patch = Object.fromEntries(FILLABLE
+        const patch = body.fill_empty ? Object.fromEntries(FILLABLE
           .filter((k) => isEmpty(k, e[k]) && !isEmpty(k, incoming[k]))
-          .map((k) => [k, incoming[k]]));
-        if (Object.keys(patch).length) {
+          .map((k) => [k, incoming[k]])) : {};
+        // 予定価格だけは CSV の値で上書きする（CSV に値があり、今と違うときだけ）
+        const set = {};
+        const msgs = [];
+        if (body.update_list_price && !isEmpty('list_price', incoming.list_price) && incoming.list_price !== e.list_price) {
+          delete patch.list_price;
+          set.list_price = incoming.list_price;
+          const yen = (n) => (n ? '¥' + Number(n).toLocaleString('ja-JP') : '空欄');
+          msgs.push(`予定価格 ${yen(e.list_price)} → ${yen(incoming.list_price)}`);
+        }
+        if (Object.keys(patch).length) msgs.unshift(`空欄を補う：${Object.keys(patch).map((k) => LABEL[k]).join('・')}`);
+        if (msgs.length) {
           seen.add(key);
-          fills.push({ id: e.id, patch });
-          results.push({ line, status: 'fill', message: `No.${e.id} ${e.name} の空欄を補う：${Object.keys(patch).map((k) => LABEL[k]).join('・')}` });
+          fills.push({ id: e.id, patch, set });
+          results.push({ line, status: 'fill', message: `No.${e.id} ${e.name}：${msgs.join('／')}` });
           continue;
         }
       }
@@ -72,13 +83,17 @@ export async function onRequestPost({ request, env }) {
     for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
   }
   if (!body.dry_run && fills.length) {
-    const stmts = fills.map(({ id, patch }) => {
+    const stmts = fills.map(({ id, patch, set }) => {
       const keys = Object.keys(patch);
-      // 念のため SQL 側でも空欄のときだけ書き込む
+      // 補う項目は、念のため SQL 側でも空欄のときだけ書き込む
       const sets = keys.map((k, j) => k === 'purchase_price' || k === 'list_price'
         ? `${k} = CASE WHEN ${k} IS NULL OR ${k} = 0 THEN ?${j + 2} ELSE ${k} END`
-        : `${k} = CASE WHEN ${k} IS NULL OR ${k} = '' THEN ?${j + 2} ELSE ${k} END`).join(', ');
-      return env.DB.prepare(`UPDATE items SET ${sets}, updated_at = datetime('now') WHERE id = ?1`).bind(id, ...keys.map((k) => patch[k]));
+        : `${k} = CASE WHEN ${k} IS NULL OR ${k} = '' THEN ?${j + 2} ELSE ${k} END`);
+      // 上書きする項目（予定価格）
+      const over = Object.keys(set);
+      over.forEach((k, j) => sets.push(`${k} = ?${keys.length + j + 2}`));
+      return env.DB.prepare(`UPDATE items SET ${sets.join(', ')}, updated_at = datetime('now') WHERE id = ?1`)
+        .bind(id, ...keys.map((k) => patch[k]), ...over.map((k) => set[k]));
     });
     for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
   }

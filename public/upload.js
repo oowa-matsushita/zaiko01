@@ -4,7 +4,7 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const STATUS = {
   new: ['新規', 'st-new'],
-  fill: ['空欄を補う', 'st-fill'],
+  fill: ['更新', 'st-fill'],
   exists: ['既存のためスキップ', 'st-skip'],
   duplicate: ['ファイル内で重複', 'st-skip'],
   error: ['エラー', 'st-err'],
@@ -34,7 +34,7 @@ async function readFile(file) {
     items = csvToItems(rows);
     if (!items.length) throw new Error('車両データがありません');
     // まず判定だけ（保存はしない）
-    const r = await api('/api/import', { items, dry_run: true, fill_empty: $('#fill-empty').checked });
+    const r = await api('/api/import', { items, dry_run: true, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked });
     results = r.results;
     render(r);
   } catch (e) {
@@ -46,12 +46,12 @@ function render(r) {
   $('#preview').hidden = false;
   $('#summary').innerHTML = `
     <span class="pill st-new">新規 ${r.new} 台</span>
-    ${r.fill ? `<span class="pill st-fill">空欄を補う ${r.fill} 台</span>` : ''}
+    ${r.fill ? `<span class="pill st-fill">更新 ${r.fill} 台</span>` : ''}
     <span class="pill st-skip">既存（スキップ） ${r.exists} 台</span>
     ${r.duplicate ? `<span class="pill st-skip">ファイル内重複 ${r.duplicate} 台</span>` : ''}
     ${r.error ? `<span class="pill st-err">エラー ${r.error} 台</span>` : ''}
     <span class="muted">（全 ${items.length} 行）</span>`;
-  $('#btn-import').textContent = r.fill ? `新規 ${r.new} 台を追加・${r.fill} 台の空欄を補う` : `新規 ${r.new} 台を追加する`;
+  $('#btn-import').textContent = r.fill ? `新規 ${r.new} 台を追加・${r.fill} 台を更新` : `新規 ${r.new} 台を追加する`;
   $('#btn-import').disabled = !r.new && !r.fill;
   const onlyNew = $('#only-new').checked;
   const byLine = new Map(results.map((x) => [x.line, x]));
@@ -92,25 +92,27 @@ $('#btn-import').addEventListener('click', async () => {
   btn.disabled = true;
   btn.textContent = '追加しています…';
   try {
-    const r = await api('/api/import', { items, dry_run: false, fill_empty: $('#fill-empty').checked });
+    const r = await api('/api/import', { items, dry_run: false, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked });
     results = r.results;
-    toast(`${r.added} 台を追加${r.filled ? `・${r.filled} 台の空欄を補いました` : 'しました'}（スキップ ${r.exists + r.duplicate} 台）`);
+    toast(`${r.added} 台を追加${r.filled ? `・${r.filled} 台を更新しました` : 'しました'}（スキップ ${r.exists + r.duplicate} 台）`);
     $('#preview').hidden = true;
     $('#summary').textContent = '';
     $('#drop').insertAdjacentHTML('afterend',
-      `<p class="up-done">✅ ${r.added} 台を在庫に追加しました。${r.filled ? `${r.filled} 台の空欄を補いました。` : ''}スキップ ${r.exists + r.duplicate} 台${r.error ? `、エラー ${r.error} 台` : ''}。<a href="/">在庫一覧を見る</a></p>`);
+      `<p class="up-done">✅ ${r.added} 台を在庫に追加しました。${r.filled ? `${r.filled} 台を更新しました。` : ''}スキップ ${r.exists + r.duplicate} 台${r.error ? `、エラー ${r.error} 台` : ''}。<a href="/">在庫一覧を見る</a></p>`);
   } catch (e) {
     toast(`追加できませんでした：${e.message}`, true);
     render(summaryFrom(results));
   }
 });
 
-// 「空欄を補う」を切り替えたら判定し直す
-$('#fill-empty').addEventListener('change', async () => {
+// チェックを切り替えたら判定し直す
+async function recheck() {
   if (!items.length) return;
   try {
-    const r = await api('/api/import', { items, dry_run: true, fill_empty: $('#fill-empty').checked });
+    const r = await api('/api/import', { items, dry_run: true, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked });
     results = r.results;
     render(r);
   } catch (e) { toast(e.message, true); }
-});
+}
+$('#fill-empty').addEventListener('change', recheck);
+$('#update-list').addEventListener('change', recheck);
