@@ -223,7 +223,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 /* ボタン類は角を四角に */
 button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important; }
 /* 色の列は狭く（長い色名は折り返す） */
-#tbl th[data-key="color"], #tbl td[data-key="color"] { max-width: 5.5em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tbl th[data-key="color"], #tbl td[data-key="color"] { max-width: 8em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #tbl td[data-key="color"].editing { max-width: none; overflow: visible; }
 /* 開催日・出庫日：日付を上下にそろえたグリッド（横スクロール） */
 .date-scroll { overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }

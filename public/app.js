@@ -158,6 +158,39 @@ function shortWareki(s) {
   const y = m[2] === '元' ? 1 : Number(m[2]);
   return `${ERA_ABBR[m[1]]}${y}${m[3] ? '/' + Number(m[3]) : ''}`;
 }
+// 色名を「白（ホワイト）」の形にそろえて表示する（保存されているデータはそのまま）
+// 色の言葉が複数あるときは先に出てくるものを採用。「パール」は他の色の言葉がないときだけ白とみなす
+const COLOR_GROUPS = [
+  ['白（ホワイト）', ['白', 'ホワイト', 'ﾎﾜｲﾄ']],
+  ['黒（ブラック）', ['黒', 'ブラック']],
+  ['赤（レッド）', ['赤', 'レッド', 'ワイン', 'ボルドー']],
+  ['青（ブルー）', ['青', 'ブルー', 'アオ']],
+  ['紺（ネイビー）', ['紺', 'ネイビー']],
+  ['銀（シルバー）', ['銀', 'シルバー']],
+  ['灰（グレー）', ['灰', 'グレー', 'グレイ', 'ガンメタ']],
+  ['緑（グリーン）', ['緑', 'グリーン', 'カーキ']],
+  ['黄（イエロー）', ['黄', 'イエロー']],
+  ['橙（オレンジ）', ['橙', 'オレンジ']],
+  ['茶（ブラウン）', ['茶', 'ブラウン', 'ベージュ']],
+  ['紫（パープル）', ['紫', 'ムラサキ', 'パープル']],
+  ['桃（ピンク）', ['桃', 'ピンク']],
+  ['金（ゴールド）', ['金', 'ゴールド']],
+  ['アイボリー', ['アイボリー', 'クリーム']],
+];
+function colorLabel(raw) {
+  const s = String(raw || '').normalize('NFKC');
+  if (!s) return '';
+  let best = null;
+  for (const [label, words] of COLOR_GROUPS) {
+    for (const w of words) {
+      const i = s.indexOf(w);
+      if (i >= 0 && (!best || i < best.i)) best = { i, label };
+    }
+  }
+  if (best) return best.label;
+  if (s.includes('パール')) return '白（ホワイト）';
+  return s;
+}
 const sortVal = (it, k) => k === 'mileage'
   ? (it.mileage == null ? null : it.mileage_unit === 'mile' ? it.mileage * KM_PER_MILE : it.mileage)
   : k === 'first_reg' ? warekiNum(it.first_reg)
@@ -166,6 +199,7 @@ const sortVal = (it, k) => k === 'mileage'
 const cellHtml = (it, k) => {
   switch (k) {
     case 'first_reg': return esc(shortWareki(it.first_reg));
+    case 'color': return esc(colorLabel(it.color));
     case 'mileage': return esc(fmtMileage(it) ?? '');
     case 'purchase_price': case 'landing_price': case 'list_price': return it[k] ? esc(yen(it[k])) : '';
     case 'has_warranty': case 'has_manual': return it[k] ? '✓' : '';
@@ -468,6 +502,7 @@ const WIDE_FIELDS = new Set(['notes']);
 const CENTER_FIELDS = new Set(['venue', 'carrier', 'has_warranty', 'has_manual']);
 const reqVal = (it, k) => k === 'mileage' ? (fmtMileage(it) ?? '')
   : k === 'first_reg' ? shortWareki(it.first_reg)
+  : k === 'color' ? colorLabel(it.color)
   : k === 'has_warranty' || k === 'has_manual' ? (it[k] ? '✓' : '')
   : k === 'created_at' ? mdDate(jstDate(it.created_at))
   : k === 'purchase_price' || k === 'landing_price' || k === 'list_price' ? (it[k] ? yen(it[k]) : '')
