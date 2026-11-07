@@ -120,8 +120,6 @@ const COLS = [
   ['venue', '会場', 'center'],
   ['event_date', '開催日', 'date'],
   ['shipped_date', '出庫日', 'date'],
-  ['has_warranty', '保証書', 'center'],
-  ['has_manual', '取説', 'center'],
   ['notes', 'メモ', 'wrap'],
   ['created_at', '登録日'],
 ];
@@ -131,8 +129,8 @@ COL.blank = { label: '', cls: 'blank' };
 const LAYOUTS = {
   1: [COLS.map((c) => c[0])],
   2: [
-    ['id', 'first_reg', 'name', 'chassis_no', 'color', 'color_code', 'mileage', 'purchase_price', 'landing_price', 'has_warranty'],
-    ['blank', 'own_date', 'venue', 'event_date', 'shipped_date', 'created_at', 'notes*2', 'has_manual'],
+    ['id', 'first_reg', 'name', 'chassis_no', 'color', 'color_code', 'mileage', 'purchase_price', 'landing_price'],
+    ['blank', 'own_date', 'venue', 'event_date', 'shipped_date', 'created_at', 'notes*2'],
   ],
 };
 let layoutKey = '2';
