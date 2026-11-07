@@ -263,7 +263,14 @@ function openForm(item) {
   for (const el of form.elements) {
     if (!el.name || !(el.name in data)) continue;
     if (el.type === 'checkbox') el.checked = !!data[el.name];
-    else el.value = data[el.name] ?? '';
+    else {
+      // 選択肢にない以前の値（例：シンセイ）は一時的に選択肢へ加えて消えないようにする
+      el.querySelectorAll?.('option.old').forEach((o) => o.remove());
+      if (el.tagName === 'SELECT' && data[el.name] && ![...el.options].some((o) => o.value === data[el.name])) {
+        el.add(Object.assign(document.createElement('option'), { value: data[el.name], textContent: data[el.name], className: 'old' }));
+      }
+      el.value = data[el.name] ?? '';
+    }
   }
   if (!item) form.elements.id.value = '';
   updateMileage();
@@ -331,7 +338,7 @@ const EDITABLE = new Set(['first_reg', 'name', 'chassis_no', 'color', 'color_cod
   'event_date', 'shipped_date', 'carrier', 'purchase_price', 'landing_price', 'list_price', 'has_warranty', 'has_manual', 'notes']);
 const DATE_KEYS = new Set(['own_date', 'event_date', 'shipped_date']);
 const VENUES = ['名古屋', '静岡', '廃車'];
-const CARRIERS = ['シンセイ', 'タカラ', '自社'];
+const CARRIERS = ['シンセイ1', 'シンセイ2', 'シンセイ3', 'シンセイ4', 'タカラ', '自社'];
 const SELECTS = { venue: VENUES, carrier: CARRIERS };
 let editing = null; // { td, item, key }
 
@@ -385,7 +392,8 @@ function startEdit(td) {
       <select><option value="km">km</option><option value="mile">マイル</option></select></span>`;
     read = () => ({ mileage: td.querySelector('input').value, mileage_unit: td.querySelector('select').value });
   } else if (SELECTS[key]) {
-    html = `<select><option value="">未選択</option>${SELECTS[key].map((v) => `<option>${v}</option>`).join('')}</select>`;
+    const opts = item[key] && !SELECTS[key].includes(item[key]) ? [...SELECTS[key], item[key]] : SELECTS[key];
+    html = `<select><option value="">未選択</option>${opts.map((v) => `<option>${esc(v)}</option>`).join('')}</select>`;
     read = () => ({ [key]: td.querySelector('select').value });
   } else if (key === 'notes') {
     html = `<textarea rows="3">${esc(item[key] ?? '')}</textarea>`;

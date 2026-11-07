@@ -13,7 +13,9 @@ const INT_FIELDS = new Set(['quantity', 'purchase_price', 'list_price', 'sold_pr
 const BOOL_FIELDS = new Set(['has_warranty', 'has_manual']);
 export const MILEAGE_UNITS = ['km', 'mile'];
 export const VENUES = ['名古屋', '静岡', '廃車'];
-export const CARRIERS = ['シンセイ', 'タカラ', '自社'];
+export const CARRIERS = ['シンセイ1', 'シンセイ2', 'シンセイ3', 'シンセイ4', 'タカラ', '自社'];
+// 以前の選択肢。すでに入っている車両はそのまま保存できるようにする
+const OLD_CARRIERS = ['シンセイ'];
 const DATE_FIELDS = new Set(['own_date', 'event_date', 'shipped_date', 'purchase_date', 'sold_date']);
 
 // 後から追加した列。Worker が起動時に足りない列を自動で追加する
@@ -110,7 +112,7 @@ export function clean(input, partial = false) {
   if ('venue' in out && out.venue !== null && !VENUES.includes(out.venue)) {
     throw new Error(`会場は ${VENUES.join(' / ')} のいずれかです`);
   }
-  if ('carrier' in out && out.carrier !== null && !CARRIERS.includes(out.carrier)) {
+  if ('carrier' in out && out.carrier !== null && !CARRIERS.includes(out.carrier) && !OLD_CARRIERS.includes(out.carrier)) {
     throw new Error(`陸送会社は ${CARRIERS.join(' / ')} のいずれかです`);
   }
   if ('mileage_unit' in out) {
