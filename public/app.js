@@ -68,7 +68,8 @@ function renderDateGrid(counts) {
     `<button type="button" class="date-box all" data-field="${field}" data-date="" aria-pressed="${!state[field]}"><span class="n">すべて</span></button>` +
     cols.map((d) => (list.includes(d) || state[field] === d ? box(field, d) : '<span class="date-empty"></span>')).join('');
   const g = $('#f-dates');
-  g.style.gridTemplateColumns = `3.5em 76px repeat(${cols.length}, 76px)`;
+  g.style.gridTemplateColumns = `3.5em minmax(58px, 1fr) repeat(${cols.length}, minmax(64px, 1fr))`;
+  requestAnimationFrame(updateScrollHints);
   g.innerHTML = row('event_date', '開催日', ev) + row('shipped_date', '出庫日', sh);
 }
 
@@ -196,10 +197,7 @@ function renderHead() {
     const span = (k === 'id' && rows.length > 1 ? ` rowspan="${rows.length}"` : '') + colspanAttr(cs);
     return `<th data-key="${k}"${span} class="${cls === 'sticky' || cls === 'center' ? cls : ''}${r > 0 ? ' sub' : ''}">${label}<span class="arrow">${arrow}</span></th>`;
   }).join('')}</tr>`).join('');
-  // 2段目の見出しを1段目の下に固定する
-  const first = $('#tbl thead tr');
-  const h = first ? first.getBoundingClientRect().height : 0;
-  document.querySelectorAll('#tbl thead th.sub').forEach((th) => { th.style.top = h + 'px'; });
+  updateStickyHead();
   // 2段表示は横幅が収まるので列の固定はしない
   if (rows.length > 1) document.querySelectorAll('#tbl thead th.sticky').forEach((th) => th.classList.remove('sticky'));
 }
@@ -237,6 +235,7 @@ function render({ total }) {
   const rows = sortedItems();
   // 1台ごとに tbody を分けて、2段表示でも1台単位で色分け・ハイライトする
   setBody(rows.map((it) => `<tbody class="vehicle">${rowHtml(it)}</tbody>`).join(''));
+  fitTable();
 }
 
 $('#tbl thead').addEventListener('click', (e) => {
@@ -715,3 +714,38 @@ ownBtns.forEach((b) => b.addEventListener('click', () => {
   updateOwnBtns();
   load();
 }));
+
+// ---- 画面幅に合わせて表の文字サイズを自動調整 ----
+// 表が枠からはみ出す間は文字を少しずつ小さくする（下限 0.66rem）。それでも入らなければ横スクロール
+const FONT_MAX = 0.9, FONT_MIN = 0.66;
+function fitTable() {
+  const wrap = $('.table-wrap'), tbl = $('#tbl');
+  if (!wrap || !tbl) return;
+  let size = FONT_MAX;
+  tbl.style.fontSize = size + 'rem';
+  while (tbl.scrollWidth > wrap.clientWidth + 1 && size > FONT_MIN) {
+    size = Math.max(FONT_MIN, +(size - 0.03).toFixed(2));
+    tbl.style.fontSize = size + 'rem';
+  }
+  updateStickyHead();
+  updateScrollHints();
+}
+// 2段目の見出しを1段目の下に固定する
+function updateStickyHead() {
+  const first = $('#tbl thead tr');
+  const h = first ? first.getBoundingClientRect().height : 0;
+  document.querySelectorAll('#tbl thead th.sub').forEach((th) => { th.style.top = h + 'px'; });
+}
+// 横スクロールできるときだけ「← 横にスクロールできます →」を表示
+function updateScrollHints() {
+  for (const [box, id] of [[$('.table-wrap'), 'hint-table'], [$('.date-scroll'), 'hint-dates']]) {
+    if (!box) continue;
+    let hint = document.getElementById(id);
+    const over = box.scrollWidth > box.clientWidth + 1;
+    if (over && !hint) {
+      box.insertAdjacentHTML('afterend', `<p class="scroll-hint" id="${id}">← 横にスクロールできます →</p>`);
+    } else if (!over && hint) hint.remove();
+  }
+}
+let fitTimer;
+window.addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitTable, 150); });

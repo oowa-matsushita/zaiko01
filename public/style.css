@@ -97,7 +97,7 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 4px; }
 #tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: .9rem; }
 #tbl th, #tbl td {
   border-right: 1px solid var(--tline); border-bottom: 1px solid var(--tline);
-  padding: 6px 10px; text-align: left; vertical-align: top; white-space: nowrap;
+  padding: .4em .65em; text-align: left; vertical-align: top; white-space: nowrap;
 }
 #tbl th:last-child, #tbl td:last-child { border-right: 0; }
 #tbl thead th {
@@ -231,3 +231,15 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 .date-grid .date-box { min-width: 0; width: 100%; }
 .date-grid .date-box.all { position: sticky; left: calc(3.5em + 6px); z-index: 2; box-shadow: 6px 0 0 var(--bg), -6px 0 0 var(--bg); white-space: nowrap; }
 .date-empty { border: 1px dashed var(--line); background: transparent; }
+/* ---- 画面幅への自動調整・スクロールバーを常に表示 ---- */
+.table-wrap, .date-scroll { scrollbar-width: auto; scrollbar-color: #8a93a3 var(--thead); }
+.table-wrap::-webkit-scrollbar, .date-scroll::-webkit-scrollbar { height: 12px; width: 12px; }
+.table-wrap::-webkit-scrollbar-track, .date-scroll::-webkit-scrollbar-track { background: var(--thead); }
+.table-wrap::-webkit-scrollbar-thumb, .date-scroll::-webkit-scrollbar-thumb { background: #8a93a3; border: 2px solid var(--thead); }
+.table-wrap::-webkit-scrollbar-thumb:hover, .date-scroll::-webkit-scrollbar-thumb:hover { background: #5f6878; }
+/* 日付の枠：画面幅に合わせて広がり、狭いときだけスクロール */
+.date-grid { width: 100%; }
+.date-grid .date-box { padding: 4px 2px; }
+.date-grid .date-box .d { font-size: .78rem; white-space: nowrap; }
+.date-grid .date-box .n { font-size: 1rem; }
+.scroll-hint { font-size: .75rem; color: var(--muted); margin: 2px 0 0; }
