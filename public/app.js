@@ -518,7 +518,7 @@ function filterLabel() {
 }
 
 // 依頼文：開催日・会場・出庫日が同じ車両をまとめ、その条件を依頼日の下に書く。
-// 車両は「車名　車台番号の右から4桁」だけのシンプルな形
+// 車両は「車名　車台番号の右から4桁　色」だけのシンプルな形
 const last4 = (c) => (c ? String(c).replace(/\s/g, '').slice(-4) : '－');
 const reqDate = (d) => (d ? `${mdDate(d)}(${WD[dow(d)]})` : '未定');
 function requestGroups(items) {
@@ -533,7 +533,7 @@ function requestGroups(items) {
 function requestText(items) {
   const groups = requestGroups(items);
   const cond = (g) => [`開催日：${reqDate(g.event_date)}`, `会場：${g.venue || '未定'}`, `出庫日：${reqDate(g.shipped_date)}`];
-  const list = (g) => g.items.map((it) => `${it.name}　${last4(it.chassis_no)}`);
+  const list = (g) => g.items.map((it) => [it.name, last4(it.chassis_no), colorLabel(it.color)].filter(Boolean).join('　'));
   const lines = [`【依頼】${todayLabel()}`];
   if (groups.length === 1) {
     // すべて同じ条件 → 依頼日の下にまとめて書く
