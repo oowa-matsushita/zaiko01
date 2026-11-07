@@ -65,7 +65,11 @@ const HEAD = {
   type: ['型式'],
   chassis: ['車台番号', '車体番号'],
   purchase: ['仕入金額', '買取金額', '仕入価格', '買取価格'],
+  list: ['予定売価本体予定', '予定売価', '予定価格', '予定売価本体'],
 };
+
+// 予定売価の「未設定」を表す仮の値（多数の車両に同じ値が入っている）は取り込まない
+const LIST_PLACEHOLDER = new Set([7070706, 46909091]);
 
 export function csvToItems(rows) {
   if (rows.length < 2) throw new Error('データがありません');
@@ -89,6 +93,7 @@ export function csvToItems(rows) {
       mileage: Number.isFinite(km) && km >= 0 && get(r, 'mileage') !== '' ? km : null,
       mileage_unit: 'km',
       first_reg: get(r, 'first_reg'),
+      list_price: (() => { const v = Number(get(r, 'list').replace(/[^\d]/g, '')); return get(r, 'list') !== '' && Number.isFinite(v) && v > 0 && !LIST_PLACEHOLDER.has(v) ? v : null; })(),
       purchase_price: (() => { const v = Number(get(r, 'purchase').replace(/[^\d]/g, '')); return get(r, 'purchase') !== '' && Number.isFinite(v) ? v : null; })(),
     };
   });

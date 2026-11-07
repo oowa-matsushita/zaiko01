@@ -118,6 +118,7 @@ const COLS = [
   ['mileage', '走行距離', 'num'],
   ['purchase_price', '買取金額', 'num'],
   ['landing_price', '着地予想', 'num'],
+  ['list_price', '予定価格', 'num'],
   ['own_date', '自社名', 'date'],
   ['venue', '会場', 'center'],
   ['event_date', '開催日', 'date'],
@@ -132,8 +133,8 @@ COL.blank = { label: '', cls: 'blank' };
 const LAYOUTS = {
   1: [COLS.map((c) => c[0])],
   2: [
-    ['id', 'first_reg', 'name', 'chassis_no', 'color', 'color_code', 'mileage', 'purchase_price', 'landing_price'],
-    ['blank', 'own_date', 'venue', 'event_date', 'shipped_date', 'carrier', 'created_at', 'notes'],
+    ['id', 'first_reg', 'name', 'chassis_no', 'color', 'color_code', 'mileage', 'purchase_price', 'landing_price', 'list_price'],
+    ['blank', 'own_date', 'venue', 'event_date', 'shipped_date', 'carrier', 'created_at', 'notes*2'],
   ],
 };
 let layoutKey = '2';
@@ -166,7 +167,7 @@ const cellHtml = (it, k) => {
   switch (k) {
     case 'first_reg': return esc(shortWareki(it.first_reg));
     case 'mileage': return esc(fmtMileage(it) ?? '');
-    case 'purchase_price': case 'landing_price': return it[k] ? esc(yen(it[k])) : '';
+    case 'purchase_price': case 'landing_price': case 'list_price': return it[k] ? esc(yen(it[k])) : '';
     case 'has_warranty': case 'has_manual': return it[k] ? '✓' : '';
     case 'created_at': return esc(mdDate(jstDate(it.created_at)));
     case 'own_date': case 'event_date': case 'shipped_date': return esc(mdDate(it[k]));
@@ -327,7 +328,7 @@ document.addEventListener('click', (e) => {
 
 // ---- 一覧での直接編集（ダブルクリック／ダブルタップ） ----
 const EDITABLE = new Set(['first_reg', 'name', 'chassis_no', 'color', 'color_code', 'mileage', 'own_date', 'venue',
-  'event_date', 'shipped_date', 'carrier', 'purchase_price', 'landing_price', 'has_warranty', 'has_manual', 'notes']);
+  'event_date', 'shipped_date', 'carrier', 'purchase_price', 'landing_price', 'list_price', 'has_warranty', 'has_manual', 'notes']);
 const DATE_KEYS = new Set(['own_date', 'event_date', 'shipped_date']);
 const VENUES = ['名古屋', '静岡', '廃車'];
 const CARRIERS = ['シンセイ', 'タカラ', '自社'];
@@ -391,7 +392,7 @@ function startEdit(td) {
     read = () => ({ [key]: td.querySelector('textarea').value });
   } else {
     const type = DATE_KEYS.has(key) ? 'date' : 'text';
-    const numAttr = key === 'purchase_price' || key === 'landing_price' ? ' inputmode="numeric" autocomplete="off"' : '';
+    const numAttr = key === 'purchase_price' || key === 'landing_price' || key === 'list_price' ? ' inputmode="numeric" autocomplete="off"' : '';
     html = `<input type="${type}"${numAttr} value="${esc(item[key] ?? '')}"${key === 'color' ? ' list="dl-color"' : ''}>`;
     read = () => ({ [key]: td.querySelector('input').value });
   }
@@ -461,7 +462,7 @@ const reqVal = (it, k) => k === 'mileage' ? (fmtMileage(it) ?? '')
   : k === 'first_reg' ? shortWareki(it.first_reg)
   : k === 'has_warranty' || k === 'has_manual' ? (it[k] ? '✓' : '')
   : k === 'created_at' ? mdDate(jstDate(it.created_at))
-  : k === 'purchase_price' || k === 'landing_price' ? (it[k] ? yen(it[k]) : '')
+  : k === 'purchase_price' || k === 'landing_price' || k === 'list_price' ? (it[k] ? yen(it[k]) : '')
   : DATE_FIELDS_REQ.has(k) ? (it[k] ? `${mdDate(it[k])}(${WD[dow(it[k])]})` : '')
   : (it[k] ?? '');
 const todayLabel = () => { const t = jstToday(); return `${mdDate(t)}(${WD[dow(t)]})`; };

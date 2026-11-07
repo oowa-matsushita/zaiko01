@@ -8,7 +8,7 @@ export const FIELDS = [
   'purchase_date', 'purchase_price', 'supplier', 'location', 'list_price',
   'status', 'sold_date', 'sold_price', 'fees', 'notes',
 ];
-const FIELD_LABELS = { mileage: '走行距離', landing_price: '着地予想', purchase_price: '買取金額', list_price: '販売予定価格', sold_price: '販売価格', fees: '手数料', quantity: '数量' };
+const FIELD_LABELS = { mileage: '走行距離', landing_price: '着地予想', purchase_price: '買取金額', list_price: '予定価格', sold_price: '販売価格', fees: '手数料', quantity: '数量' };
 const INT_FIELDS = new Set(['quantity', 'purchase_price', 'list_price', 'sold_price', 'fees', 'mileage', 'landing_price']);
 const BOOL_FIELDS = new Set(['has_warranty', 'has_manual']);
 export const MILEAGE_UNITS = ['km', 'mile'];

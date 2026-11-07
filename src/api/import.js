@@ -3,12 +3,12 @@ import { clean, json } from '../lib.js';
 // POST /api/import  { items: [...], dry_run: true|false, fill_empty: true|false }
 // 車台番号が在庫にある車両・ファイル内で重複する車両はスキップし、新規だけ追加する（上書きしない）
 // fill_empty=true のときだけ、既存車両の「空欄の項目」を補う（入力済みの項目は変えない）
-const FILLABLE = ['first_reg', 'color', 'color_code', 'mileage', 'purchase_price'];
-const isEmpty = (k, v) => v == null || v === '' || (k === 'purchase_price' && v === 0);
+const FILLABLE = ['first_reg', 'color', 'color_code', 'mileage', 'purchase_price', 'list_price'];
+const isEmpty = (k, v) => v == null || v === '' || ((k === 'purchase_price' || k === 'list_price') && v === 0);
 const normChassis = (s) => String(s ?? '').normalize('NFKC').toUpperCase()
   .replace(/[ー－―‐−]/g, '-').replace(/[^A-Z0-9-]/g, '');
 const MAX = 1000;
-const LABEL = { first_reg: '初度登録', color: '色', color_code: 'カラーコード', mileage: '走行距離', purchase_price: '買取金額' };
+const LABEL = { first_reg: '初度登録', color: '色', color_code: 'カラーコード', mileage: '走行距離', purchase_price: '買取金額', list_price: '予定価格' };
 
 export async function onRequestPost({ request, env }) {
   let body;
@@ -75,7 +75,7 @@ export async function onRequestPost({ request, env }) {
     const stmts = fills.map(({ id, patch }) => {
       const keys = Object.keys(patch);
       // 念のため SQL 側でも空欄のときだけ書き込む
-      const sets = keys.map((k, j) => k === 'purchase_price'
+      const sets = keys.map((k, j) => k === 'purchase_price' || k === 'list_price'
         ? `${k} = CASE WHEN ${k} IS NULL OR ${k} = 0 THEN ?${j + 2} ELSE ${k} END`
         : `${k} = CASE WHEN ${k} IS NULL OR ${k} = '' THEN ?${j + 2} ELSE ${k} END`).join(', ');
       return env.DB.prepare(`UPDATE items SET ${sets}, updated_at = datetime('now') WHERE id = ?1`).bind(id, ...keys.map((k) => patch[k]));

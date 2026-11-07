@@ -65,8 +65,9 @@ function render(r) {
       <td>${esc(it.first_reg)}</td><td>${esc(it.name)}</td><td>${esc(it.chassis_no)}</td><td>${esc(it.color)}</td><td>${esc(it.color_code)}</td>
       <td class="num">${it.mileage != null ? Number(it.mileage).toLocaleString('ja-JP') + 'km' : ''}</td>
       <td class="num">${it.purchase_price ? '¥' + Number(it.purchase_price).toLocaleString('ja-JP') : ''}</td>
+      <td class="num">${it.list_price ? '¥' + Number(it.list_price).toLocaleString('ja-JP') : ''}</td>
 </tr>`;
-  }).join('') || `<tr><td colspan="9" class="empty">新規の車両はありません</td></tr>`;
+  }).join('') || `<tr><td colspan="10" class="empty">新規の車両はありません</td></tr>`;
 }
 
 $('#file').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) readFile(f); e.target.value = ''; });
