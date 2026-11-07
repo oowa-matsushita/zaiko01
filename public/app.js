@@ -64,10 +64,20 @@ function renderDateGrid(counts) {
     return `<button type="button" class="date-box ${cls}" data-field="${field}" data-date="${d}" aria-pressed="${state[field] === d}">
       <span class="d">${shortDate(d)}</span><span class="n">${n}<small>台</small></span></button>`;
   };
+  // 出庫日の枠の中に、その日の陸送会社ボタン（例：シンセイ1 2台）を並べる
+  const carrierOrder = (c) => { const i = CARRIERS.indexOf(c); return i < 0 ? 99 : i; };
+  const shipCell = (d) => {
+    const cs = Object.entries(counts.shipped_carriers?.[d] || {}).sort((a, b) => carrierOrder(a[0]) - carrierOrder(b[0]));
+    const chips = cs.map(([c, n]) => `<button type="button" class="carrier-chip" data-ship="${d}" data-carrier="${esc(c)}"
+        aria-pressed="${state.shipped_date === d && state.carrier === c}">${esc(c)} <b>${n}台</b></button>`).join('');
+    return `<div class="ship-cell">${box('shipped_date', d)}${chips ? `<div class="ship-carriers">${chips}</div>` : ''}</div>`;
+  };
   const row = (field, label, list) =>
     `<span class="df-label">${label}</span>` +
     `<button type="button" class="date-box all" data-field="${field}" data-date="" aria-pressed="${!state[field]}"><span class="n">すべて</span></button>` +
-    cols.map((d) => (list.includes(d) || state[field] === d ? box(field, d) : '<span class="date-empty"></span>')).join('');
+    cols.map((d) => (list.includes(d) || state[field] === d
+      ? (field === 'shipped_date' ? shipCell(d) : box(field, d))
+      : '<span class="date-empty"></span>')).join('');
   const g = $('#f-dates');
   g.style.gridTemplateColumns = `3.5em minmax(58px, 1fr) repeat(${cols.length}, minmax(64px, 1fr))`;
   requestAnimationFrame(updateScrollHints);
@@ -82,6 +92,15 @@ async function loadDateCounts() {
 
 // 枠をクリックで絞り込み（選択中の枠をもう一度押すと解除）
 $('#f-dates').addEventListener('click', (e) => {
+  // 陸送会社ボタン：その出庫日・その陸送会社に絞り込む（もう一度押すと陸送会社だけ解除）
+  const chip = e.target.closest('.carrier-chip');
+  if (chip) {
+    const same = state.shipped_date === chip.dataset.ship && state.carrier === chip.dataset.carrier;
+    state.shipped_date = chip.dataset.ship;
+    setCarrier(same ? '' : chip.dataset.carrier);
+    load();
+    return;
+  }
   const b = e.target.closest('.date-box');
   if (!b) return;
   const field = b.dataset.field;
@@ -820,9 +839,10 @@ window.addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = set
 const carrierSel = $('#f-carrier');
 carrierSel.value = state.carrier;
 carrierSel.classList.toggle('active', !!state.carrier);
-carrierSel.addEventListener('change', () => {
-  state.carrier = carrierSel.value;
-  carrierSel.classList.toggle('active', !!state.carrier);
-  try { localStorage.setItem('zaiko-carrier', state.carrier); } catch { /* 無視 */ }
-  load();
-});
+function setCarrier(v) {
+  state.carrier = v;
+  carrierSel.value = v;
+  carrierSel.classList.toggle('active', !!v);
+  try { localStorage.setItem('zaiko-carrier', v); } catch { /* 無視 */ }
+}
+carrierSel.addEventListener('change', () => { setCarrier(carrierSel.value); load(); });
