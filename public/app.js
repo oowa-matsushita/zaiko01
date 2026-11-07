@@ -482,13 +482,32 @@ function filterLabel() {
   return f.join('／');
 }
 
+// 依頼文：開催日・会場・出庫日が同じ車両をまとめ、その条件を依頼日の下に書く。
+// 車両は「車名　車台番号の右から4桁」だけのシンプルな形
+const last4 = (c) => (c ? String(c).replace(/\s/g, '').slice(-4) : '－');
+const reqDate = (d) => (d ? `${mdDate(d)}(${WD[dow(d)]})` : '未定');
+function requestGroups(items) {
+  const groups = new Map();
+  for (const it of items) {
+    const key = [it.event_date || '', it.venue || '', it.shipped_date || ''].join('|');
+    if (!groups.has(key)) groups.set(key, { event_date: it.event_date, venue: it.venue, shipped_date: it.shipped_date, items: [] });
+    groups.get(key).items.push(it);
+  }
+  return [...groups.values()];
+}
 function requestText(items) {
-  const head = [`【依頼】${todayLabel()}`];
-  const fl = filterLabel();
-  if (fl) head.push(`対象：${fl}`);
-  head.push(`全${items.length}台`);
-  const body = items.map((it, i) => [`■${i + 1}台目`, ...REQ_FIELDS.map(([k, l]) => `${l}：${reqVal(it, k) || '－'}`)].join('\n'));
-  return [head.join('\n'), ...body].join('\n\n') + '\n\nよろしくお願いいたします。';
+  const groups = requestGroups(items);
+  const cond = (g) => [`開催日：${reqDate(g.event_date)}`, `会場：${g.venue || '未定'}`, `出庫日：${reqDate(g.shipped_date)}`];
+  const list = (g) => g.items.map((it) => `${it.name}　${last4(it.chassis_no)}`);
+  const lines = [`【依頼】${todayLabel()}`];
+  if (groups.length === 1) {
+    // すべて同じ条件 → 依頼日の下にまとめて書く
+    lines.push(...cond(groups[0]), `全${items.length}台`, '', ...list(groups[0]));
+  } else {
+    lines.push(`全${items.length}台`);
+    groups.forEach((g) => lines.push('', `■${cond(g).join('／')}（${g.items.length}台）`, ...list(g)));
+  }
+  return lines.join('\n') + '\n\nよろしくお願いいたします。';
 }
 
 const POPUP_STYLE = `body{font-family:system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;margin:0;padding:16px;color:#1d2330;background:#fff}
