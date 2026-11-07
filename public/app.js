@@ -211,7 +211,7 @@ function rowHtml(it) {
     }
     const base = rows.length > 1 && COL[k].cls === 'sticky' ? '' : COL[k].cls;
     const cls = [base, EDITABLE.has(k) ? 'editable' : ''].filter(Boolean).join(' ');
-    return `<td class="${cls}" data-key="${k}"${colspanAttr(span)}>${cellHtml(it, k)}</td>`;
+    return `<td class="${cls}" data-key="${k}"${k === 'color' && it.color ? ` title="${esc(it.color)}"` : ''}${colspanAttr(span)}>${cellHtml(it, k)}</td>`;
   }).join('')}</tr>`).join('');
 }
 
