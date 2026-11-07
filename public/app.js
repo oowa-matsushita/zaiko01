@@ -120,6 +120,7 @@ const COLS = [
   ['venue', '会場', 'center'],
   ['event_date', '開催日', 'date'],
   ['shipped_date', '出庫日', 'date'],
+  ['carrier', '陸送会社', 'center'],
   ['notes', 'メモ', 'wrap'],
   ['created_at', '登録日'],
 ];
@@ -130,7 +131,7 @@ const LAYOUTS = {
   1: [COLS.map((c) => c[0])],
   2: [
     ['id', 'first_reg', 'name', 'chassis_no', 'color', 'color_code', 'mileage', 'purchase_price', 'landing_price'],
-    ['blank', 'own_date', 'venue', 'event_date', 'shipped_date', 'created_at', 'notes*2'],
+    ['blank', 'own_date', 'venue', 'event_date', 'shipped_date', 'carrier', 'created_at', 'notes'],
   ],
 };
 let layoutKey = '2';
@@ -324,9 +325,11 @@ document.addEventListener('click', (e) => {
 
 // ---- 一覧での直接編集（ダブルクリック／ダブルタップ） ----
 const EDITABLE = new Set(['first_reg', 'name', 'chassis_no', 'color', 'color_code', 'mileage', 'own_date', 'venue',
-  'event_date', 'shipped_date', 'purchase_price', 'landing_price', 'has_warranty', 'has_manual', 'notes']);
+  'event_date', 'shipped_date', 'carrier', 'purchase_price', 'landing_price', 'has_warranty', 'has_manual', 'notes']);
 const DATE_KEYS = new Set(['own_date', 'event_date', 'shipped_date']);
 const VENUES = ['名古屋', '静岡', '廃車'];
+const CARRIERS = ['シンセイ', 'タカラ', '自社'];
+const SELECTS = { venue: VENUES, carrier: CARRIERS };
 let editing = null; // { td, item, key }
 
 function toast(msg, isError = false) {
@@ -378,9 +381,9 @@ function startEdit(td) {
     html = `<span class="with-unit"><input type="text" inputmode="numeric" autocomplete="off" value="${esc(item.mileage ?? '')}">
       <select><option value="km">km</option><option value="mile">マイル</option></select></span>`;
     read = () => ({ mileage: td.querySelector('input').value, mileage_unit: td.querySelector('select').value });
-  } else if (key === 'venue') {
-    html = `<select><option value="">未選択</option>${VENUES.map((v) => `<option>${v}</option>`).join('')}</select>`;
-    read = () => ({ venue: td.querySelector('select').value });
+  } else if (SELECTS[key]) {
+    html = `<select><option value="">未選択</option>${SELECTS[key].map((v) => `<option>${v}</option>`).join('')}</select>`;
+    read = () => ({ [key]: td.querySelector('select').value });
   } else if (key === 'notes') {
     html = `<textarea rows="3">${esc(item[key] ?? '')}</textarea>`;
     read = () => ({ [key]: td.querySelector('textarea').value });
@@ -393,7 +396,7 @@ function startEdit(td) {
   td.classList.add('editing');
   td.innerHTML = html;
   if (key === 'mileage') td.querySelector('select').value = item.mileage_unit || 'km';
-  if (key === 'venue') td.querySelector('select').value = item.venue || '';
+  if (SELECTS[key]) td.querySelector('select').value = item[key] || '';
   editing = { td, item, key, read };
   const first = td.querySelector('input, select, textarea');
   first.focus();
@@ -412,7 +415,7 @@ function startEdit(td) {
     setTimeout(() => { if (editing && editing.td === td) finishEdit(true); }, 0);
   });
   // 会場・日付は選んだ時点で保存
-  if (key === 'venue') td.querySelector('select').addEventListener('change', () => finishEdit(true));
+  if (SELECTS[key]) td.querySelector('select').addEventListener('change', () => finishEdit(true));
   if (DATE_KEYS.has(key)) td.querySelector('input').addEventListener('change', () => finishEdit(true));
 }
 
@@ -451,7 +454,7 @@ const DATE_FIELDS_REQ = new Set(['own_date', 'event_date', 'shipped_date']);
 // 一覧印刷はすべての項目（No. は通し番号）
 const LIST_FIELDS = COLS.filter(([k]) => k !== 'id').map(([k, l]) => [k, l]);
 const WIDE_FIELDS = new Set(['notes']);
-const CENTER_FIELDS = new Set(['venue', 'has_warranty', 'has_manual']);
+const CENTER_FIELDS = new Set(['venue', 'carrier', 'has_warranty', 'has_manual']);
 const reqVal = (it, k) => k === 'mileage' ? (fmtMileage(it) ?? '')
   : k === 'first_reg' ? shortWareki(it.first_reg)
   : k === 'has_warranty' || k === 'has_manual' ? (it[k] ? '✓' : '')

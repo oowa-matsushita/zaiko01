@@ -18,7 +18,7 @@
   </header>
 
   <section class="filters">
-    <input id="q" type="search" placeholder="車名・車台番号・色・メモなどで検索">
+    <input id="q" type="search" placeholder="車名・車台番号・色・陸送会社・メモなどで検索">
     <!-- 開催日と出庫日を同じ日付の列にそろえて表示（横スクロール） -->
     <div class="date-scroll">
       <div id="f-dates" class="date-grid" role="group" aria-label="開催日・出庫日"></div>
@@ -92,6 +92,14 @@
       </label>
       <label>開催日<input name="event_date" type="date"></label>
       <label>出庫日<input name="shipped_date" type="date"></label>
+      <label>陸送会社
+        <select name="carrier">
+          <option value="">未選択</option>
+          <option>シンセイ</option>
+          <option>タカラ</option>
+          <option>自社</option>
+        </select>
+      </label>
       <label class="full">メモ<textarea name="notes" rows="3"></textarea></label>
       <p id="form-error" class="error full" role="alert"></p>
       <div class="actions full">

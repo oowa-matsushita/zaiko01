@@ -18,7 +18,7 @@ export async function onRequestGet({ request, env }) {
   const args = [];
   const q = p.get('q');
   if (q) {
-    where.push(`(name LIKE ?1 OR chassis_no LIKE ?1 OR color LIKE ?1 OR color_code LIKE ?1 OR sales_points LIKE ?1 OR venue LIKE ?1 OR model_no LIKE ?1 OR category LIKE ?1 OR supplier LIKE ?1 OR location LIKE ?1 OR notes LIKE ?1)`
+    where.push(`(name LIKE ?1 OR chassis_no LIKE ?1 OR color LIKE ?1 OR color_code LIKE ?1 OR sales_points LIKE ?1 OR venue LIKE ?1 OR carrier LIKE ?1 OR model_no LIKE ?1 OR category LIKE ?1 OR supplier LIKE ?1 OR location LIKE ?1 OR notes LIKE ?1)`
       .replaceAll('?1', `?${args.length + 1}`));
     args.push(`%${q}%`);
   }
