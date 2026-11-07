@@ -17,11 +17,12 @@ const mdDate = (d) => {
   const thisYear = new Date(Date.now() + 9 * 3600e3).getUTCFullYear();
   return `${y !== thisYear ? y + '年' : ''}${m}月${day}日`;
 };
-const state = { q: '', event_date: '', shipped_date: '', beforeShip: true, own: '', items: [] };
+const state = { q: '', event_date: '', shipped_date: '', beforeShip: true, own: '', carrier: '', items: [] };
 try {
   // 出庫前のみ表示は既定でオン（自分でオフにした場合だけオフのまま）
   state.beforeShip = localStorage.getItem('zaiko-before-ship-v2') !== '0';
   state.own = localStorage.getItem('zaiko-own') || '';
+  state.carrier = localStorage.getItem('zaiko-carrier') || '';
 } catch { /* 既定はオフ */ }
 
 async function api(path, opts = {}) {
@@ -95,6 +96,7 @@ async function load() {
   if (state.shipped_date) p.set('shipped_date', state.shipped_date);
   if (state.beforeShip) p.set('before_ship', jstToday());
   if (state.own) p.set('own', state.own);
+  if (state.carrier) p.set('carrier', state.carrier);
   loadDateCounts();
   try {
     const data = await api('/api/items?' + p);
@@ -228,7 +230,7 @@ function render({ total }) {
   }
   renderHead();
   if (!state.items.length) {
-    setBody(`<tbody><tr><td class="empty" colspan="${colCount()}">${state.q || state.event_date || state.shipped_date || state.beforeShip || state.own ? '該当する車両がありません' : 'まだ登録がありません。「＋ 買取登録」から追加してください'}</td></tr></tbody>`);
+    setBody(`<tbody><tr><td class="empty" colspan="${colCount()}">${state.q || state.event_date || state.shipped_date || state.beforeShip || state.own || state.carrier ? '該当する車両がありません' : 'まだ登録がありません。「＋ 買取登録」から追加してください'}</td></tr></tbody>`);
     return;
   }
   const rows = sortedItems();
@@ -750,3 +752,14 @@ function updateScrollHints() {
 }
 let fitTimer;
 window.addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitTable, 150); });
+
+// ---- 陸送会社で絞り込み ----
+const carrierSel = $('#f-carrier');
+carrierSel.value = state.carrier;
+carrierSel.classList.toggle('active', !!state.carrier);
+carrierSel.addEventListener('change', () => {
+  state.carrier = carrierSel.value;
+  carrierSel.classList.toggle('active', !!state.carrier);
+  try { localStorage.setItem('zaiko-carrier', state.carrier); } catch { /* 無視 */ }
+  load();
+});

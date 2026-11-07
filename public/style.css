@@ -244,3 +244,6 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 .date-grid .date-box .d { font-size: .78rem; white-space: nowrap; }
 .date-grid .date-box .n { font-size: 1rem; }
 .scroll-hint { font-size: .75rem; color: var(--muted); margin: 2px 0 0; }
+.carrier-filter { display: flex; align-items: center; gap: 6px; font-size: .9rem; white-space: nowrap; }
+.carrier-filter select { width: auto; border-radius: 0; padding: 8px 10px; border-color: var(--line); }
+.carrier-filter select.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }

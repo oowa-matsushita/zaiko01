@@ -38,6 +38,10 @@ export async function onRequestGet({ request, env }) {
   const own = p.get('own');
   if (own === 'done') where.push("(own_date IS NOT NULL AND own_date <> '')");
   if (own === 'wait') where.push("(own_date IS NULL OR own_date = '')");
+  // 陸送会社で絞り込み（carrier=none は未選択の車両）
+  const carrier = p.get('carrier');
+  if (carrier === 'none') where.push("(carrier IS NULL OR carrier = '')");
+  else if (carrier) { where.push(`carrier = ?${args.length + 1}`); args.push(carrier); }
   for (const f of ['event_date', 'shipped_date', 'venue']) {
     const v = p.get(f);
     if (v) { where.push(`${f} = ?${args.length + 1}`); args.push(v); }
