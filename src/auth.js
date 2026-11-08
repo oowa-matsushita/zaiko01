@@ -111,7 +111,7 @@ export function loginPage(env) {
     '<p class="err">ログインの設定がまだ完了していません。Cloudflare で LOGIN_ID・LOGIN_PASSWORD（6文字以上）・SESSION_SECRET（32文字以上）を設定してください。</p>';
   const html = `<!doctype html><html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">
-<title>ログイン｜中古車 買取在庫</title>
+<title>ログイン｜MMS</title>
 <style>
 :root{--bg:#fff;--card:#fff;--text:#1d2330;--muted:#6b7280;--line:#c9ced6;--accent:#2563eb;--danger:#dc2626}
 @media (prefers-color-scheme:dark){:root{--bg:#12151b;--card:#1b2029;--text:#e7eaf0;--muted:#9aa3b2;--line:#3a414d;--accent:#3b82f6;--danger:#f87171}}
@@ -124,7 +124,7 @@ button{font:inherit;font-size:1rem;padding:12px;border:0;border-radius:0;backgro
 button:disabled{opacity:.6}.err{color:var(--danger);margin:0;font-size:.9rem;min-height:1.2em}
 </style></head><body>
 <form id="f" autocomplete="on">
-  <h1>中古車 買取在庫</h1>
+  <h1>MMS</h1>
   ${setupMsg}
   <label>ID<input name="id" autocomplete="username" autocapitalize="none" required></label>
   <label>パスワード（6文字以上）<input name="password" type="password" minlength="6" autocomplete="current-password" required></label>

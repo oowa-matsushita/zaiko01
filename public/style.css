@@ -256,3 +256,46 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 }
 .carrier-chip b { font-weight: 700; }
 .carrier-chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+
+/* ---- 画面のタブ（在庫一覧／仕入れ台帳／回転率） ---- */
+.app-tabs {
+  display: flex; gap: 2px; overflow-x: auto; border-bottom: 2px solid var(--accent);
+  background: var(--bg); margin-bottom: 12px;
+}
+.app-tabs button {
+  border: 1px solid var(--line); border-bottom: 0; border-radius: 8px 8px 0 0;
+  background: var(--thead); color: var(--muted); padding: 8px 18px; white-space: nowrap; font-weight: 600;
+}
+.app-tabs button:hover { color: var(--text); }
+.app-tabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.view-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.view-bar h2 { font-size: 1.1rem; margin: 0; }
+.view-bar label { display: flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); }
+.view-bar select { width: auto; color: var(--text); }
+.stat .note { font-size: .75rem; color: var(--muted); }
+.report-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .report-grid { grid-template-columns: 1fr; } }
+.report-table { overflow-x: auto; }
+.report-grid h3 { font-size: .95rem; margin: 0 0 6px; }
+.report-side h3:not(:first-child) { margin-top: 16px; }
+.rtbl { border-collapse: collapse; width: 100%; font-size: .85rem; background: var(--card); }
+.rtbl th, .rtbl td { border: 1px solid var(--tline); padding: .35em .6em; text-align: left; white-space: nowrap; }
+.rtbl th { background: var(--thead); font-weight: 600; }
+.rtbl .r { text-align: right; font-variant-numeric: tabular-nums; }
+.rtbl .b { font-weight: 600; }
+.rtbl tbody tr:nth-child(even) { background: var(--zebra); }
+.rtbl tfoot td { font-weight: 700; background: var(--thead); }
+.rtbl.click tbody tr[data-month] { cursor: pointer; }
+.rtbl.click tbody tr:hover { background: var(--hover); }
+.rtbl tr.sel td { background: var(--hover); font-weight: 700; }
+.bars { display: grid; gap: 6px; }
+.bar-row { display: grid; grid-template-columns: 5.5em 1fr 3.5em; gap: 8px; align-items: center; font-size: .85rem; }
+.bar-row b { text-align: right; font-variant-numeric: tabular-nums; }
+.bar { height: 14px; background: var(--line); border-radius: 4px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.bar i.warn { background: var(--minus); }
+@media print {
+  .top, .app-tabs, .view-bar button, .view-bar label, .hint, .toast { display: none !important; }
+  .report-grid { grid-template-columns: 1fr; }
+  .rtbl { font-size: 10px; }
+}

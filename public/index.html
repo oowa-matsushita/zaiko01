@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title>中古車 買取在庫管理</title>
+  <title>MMS</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <header class="top">
-    <h1>中古車 買取在庫</h1>
+    <h1>MMS</h1>
     <span class="top-actions">
       <a href="/upload" class="logout">データをアップロード</a>
       <a href="/logout" class="logout">ログアウト</a>
@@ -17,6 +17,13 @@
     </span>
   </header>
 
+  <nav class="app-tabs" role="tablist" aria-label="画面の切り替え">
+    <button type="button" role="tab" id="tab-stock" data-view="stock" aria-controls="view-stock">🚗 在庫一覧</button>
+    <button type="button" role="tab" id="tab-ledger" data-view="ledger" aria-controls="view-ledger">📒 仕入れ台帳</button>
+    <button type="button" role="tab" id="tab-turnover" data-view="turnover" aria-controls="view-turnover">🔄 回転率</button>
+  </nav>
+
+  <div id="view-stock" class="view" role="tabpanel" aria-labelledby="tab-stock">
   <section class="filters">
     <input id="q" type="search" placeholder="車名・車台番号・色・陸送会社・メモなどで検索">
     <!-- 開催日と出庫日を同じ日付の列にそろえて表示（横スクロール） -->
@@ -59,6 +66,10 @@
     </table>
   </div>
   <p class="muted hint">セルをダブルクリック（ダブルタップ）でその場で編集、Enterで保存・Escで取消。✎ でフォーム編集・削除。列名で並び替え。</p>
+  </div>
+
+  <div id="view-ledger" class="view" role="tabpanel" aria-labelledby="tab-ledger" hidden></div>
+  <div id="view-turnover" class="view" role="tabpanel" aria-labelledby="tab-turnover" hidden></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <dialog id="dlg">
@@ -129,5 +140,6 @@
   <datalist id="dl-color"></datalist>
 
   <script src="/app.js" type="module"></script>
+  <script src="/views.js" type="module"></script>
 </body>
 </html>
