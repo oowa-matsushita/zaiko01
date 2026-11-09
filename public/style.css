@@ -94,7 +94,7 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 4px; }
 }
 :root { --tline: #c9ced6; --thead: #e9ecf1; --zebra: #eef2f7; --hover: #e1ebfd; --sep: #7b8494; }
 @media (prefers-color-scheme: dark) { :root { --tline: #3a414d; --thead: #232934; --zebra: #222833; --hover: #263247; --sep: #8a93a3; } }
-#tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: .9rem; }
+#tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 1rem; }
 #tbl th, #tbl td {
   border-right: 1px solid var(--tline); border-bottom: 1px solid var(--tline);
   padding: .4em .65em; text-align: left; vertical-align: top; white-space: nowrap;
@@ -265,3 +265,9 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 #tbl .fz0 { left: var(--fz0, 0); }
 #tbl .fz1 { left: var(--fz1, 0); }
 #tbl .fz2 { left: var(--fz2, 0); box-shadow: inset -2px 0 0 var(--sep); }
+/* 選択中（クリックした）車両の行 */
+:root { --sel: #fff1b8; --sel-line: #e0a800; }
+@media (prefers-color-scheme: dark) { :root { --sel: #4a3f12; --sel-line: #d4a017; } }
+#tbl tbody.vehicle.selected, #tbl tbody.vehicle.selected:hover,
+#tbl tbody.vehicle.selected td.fz, #tbl tbody.vehicle.selected:hover td.fz { background-color: var(--sel); }
+#tbl tbody.vehicle.selected td.rowno { box-shadow: inset 4px 0 0 var(--sel-line); }

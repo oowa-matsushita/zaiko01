@@ -301,7 +301,7 @@ function render({ total }) {
   }
   const rows = sortedItems();
   // 1台ごとに tbody を分けて、2段表示でも1台単位で色分け・ハイライトする
-  setBody(rows.map((it) => `<tbody class="vehicle">${rowHtml(it)}</tbody>`).join(''));
+  setBody(rows.map((it) => `<tbody class="vehicle${it.id === selectedId ? ' selected' : ''}" data-vid="${it.id}">${rowHtml(it)}</tbody>`).join(''));
   fitTable();
 }
 
@@ -479,6 +479,7 @@ function startEdit(td) {
   first.focus();
   if (first.type === 'date') openPicker(first);
   if (first.select && first.type === 'text') first.select();
+  if (first.tagName === 'TEXTAREA') first.setSelectionRange(first.value.length, first.value.length); // メモは末尾から書き足せるように
 
   td.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { e.preventDefault(); finishEdit(false); }
@@ -498,8 +499,17 @@ function startEdit(td) {
 
 // スマホでも確実に動くよう、2回のクリックの間隔で判定する
 let lastTap = { td: null, t: 0 };
+// クリックした車両の行に色を付けて、どれを見ているかわかるようにする
+let selectedId = null;
+function selectVehicle(tb) {
+  document.querySelectorAll('#tbl tbody.selected').forEach((t) => t.classList.remove('selected'));
+  tb.classList.add('selected');
+  selectedId = Number(tb.dataset.vid);
+}
 $('#tbl').addEventListener('click', (e) => {
   if (e.target.closest('thead')) return;
+  const tb = e.target.closest('tbody.vehicle');
+  if (tb) selectVehicle(tb);
   const open = e.target.closest('[data-open]');
   if (open) { openForm(state.items.find((i) => i.id == open.dataset.open)); return; }
   const td = e.target.closest('td.editable');
@@ -816,7 +826,7 @@ ownBtns.forEach((b) => b.addEventListener('click', () => {
 
 // ---- 画面幅に合わせて表の文字サイズを自動調整 ----
 // 表が枠からはみ出す間は文字を少しずつ小さくする（下限 0.66rem）。それでも入らなければ横スクロール
-const FONT_MAX = 0.9, FONT_MIN = 0.66;
+const FONT_MAX = 1.0, FONT_MIN = 0.78;
 function fitTable() {
   const wrap = $('.table-wrap'), tbl = $('#tbl');
   if (!wrap || !tbl) return;
