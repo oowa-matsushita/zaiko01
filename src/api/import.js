@@ -45,7 +45,7 @@ export async function onRequestPost({ request, env }) {
         if (body.update_list_price && !isEmpty('list_price', incoming.list_price) && incoming.list_price !== e.list_price) {
           delete patch.list_price;
           set.list_price = incoming.list_price;
-          const yen = (n) => (n ? '¥' + Number(n).toLocaleString('ja-JP') : '空欄');
+          const yen = (n) => (n ? '¥' + Math.round(n * 1.1).toLocaleString('ja-JP') : '空欄'); // 税込で表示
           msgs.push(`予定価格 ${yen(e.list_price)} → ${yen(incoming.list_price)}`);
         }
         if (Object.keys(patch).length) msgs.unshift(`空欄を補う：${Object.keys(patch).map((k) => LABEL[k]).join('・')}`);

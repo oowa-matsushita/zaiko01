@@ -3,6 +3,15 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const KM_PER_MILE = 1.609344;
 const num = (n) => Number(n).toLocaleString('ja-JP');
 const yen = (n) => '¥' + Number(n).toLocaleString('ja-JP');
+// 予定価格は税抜で保存し、表示・入力は税込（×1.1）で行う
+const TAX = 1.1;
+const withTax = (v) => (v ? Math.round(v * TAX) : v);
+const fromTaxInput = (s) => {
+  const t = String(s ?? '').normalize('NFKC').replace(/[,，円¥\s]/g, '');
+  if (t === '') return '';
+  const n = Number(t);
+  return Number.isFinite(n) ? Math.round(n / TAX) : s; // 数字でなければそのまま送ってサーバーでエラー表示
+};
 const fmtMileage = (it) => it.mileage == null ? null
   : it.mileage_unit === 'mile'
     ? `${num(it.mileage)}マイル（約${num(Math.round(it.mileage * KM_PER_MILE))}km）`
@@ -220,7 +229,8 @@ const cellHtml = (it, k) => {
     case 'first_reg': return esc(shortWareki(it.first_reg));
     case 'color': return esc(colorLabel(it.color));
     case 'mileage': return esc(fmtMileage(it) ?? '');
-    case 'purchase_price': case 'landing_price': case 'list_price': return it[k] ? esc(yen(it[k])) : '';
+    case 'list_price': return it[k] ? esc(yen(withTax(it[k]))) : '';
+    case 'purchase_price': case 'landing_price': return it[k] ? esc(yen(it[k])) : '';
     case 'has_warranty': case 'has_manual': return it[k] ? '✓' : '';
     case 'created_at': return esc(mdDate(jstDate(it.created_at)));
     case 'own_date': case 'event_date': case 'shipped_date': return esc(mdDate(it[k]));
@@ -322,7 +332,7 @@ function openForm(item) {
       if (el.tagName === 'SELECT' && data[el.name] && ![...el.options].some((o) => o.value === data[el.name])) {
         el.add(Object.assign(document.createElement('option'), { value: data[el.name], textContent: data[el.name], className: 'old' }));
       }
-      el.value = data[el.name] ?? '';
+      el.value = (el.name === 'list_price' ? withTax(data[el.name]) : data[el.name]) ?? '';
     }
   }
   if (!item) form.elements.id.value = '';
@@ -344,7 +354,7 @@ form.addEventListener('submit', async (e) => {
   const body = {};
   for (const el of form.elements) {
     if (!el.name || el.name === 'id') continue;
-    body[el.name] = el.type === 'checkbox' ? el.checked : el.value;
+    body[el.name] = el.type === 'checkbox' ? el.checked : el.name === 'list_price' ? fromTaxInput(el.value) : el.value;
   }
   const id = form.elements.id.value;
   try {
@@ -454,8 +464,9 @@ function startEdit(td) {
   } else {
     const type = DATE_KEYS.has(key) ? 'date' : 'text';
     const numAttr = key === 'purchase_price' || key === 'landing_price' || key === 'list_price' ? ' inputmode="numeric" autocomplete="off"' : '';
-    html = `<input type="${type}"${numAttr} value="${esc(item[key] ?? '')}"${key === 'color' ? ' list="dl-color"' : ''}>`;
-    read = () => ({ [key]: td.querySelector('input').value });
+    const shown = key === 'list_price' ? withTax(item[key]) : item[key];
+    html = `<input type="${type}"${numAttr} value="${esc(shown ?? '')}"${key === 'color' ? ' list="dl-color"' : ''}>`;
+    read = () => ({ [key]: key === 'list_price' ? fromTaxInput(td.querySelector('input').value) : td.querySelector('input').value });
   }
   td.classList.add('editing');
   td.innerHTML = html;
@@ -524,7 +535,8 @@ const reqVal = (it, k) => k === 'mileage' ? (fmtMileage(it) ?? '')
   : k === 'color' ? colorLabel(it.color)
   : k === 'has_warranty' || k === 'has_manual' ? (it[k] ? '✓' : '')
   : k === 'created_at' ? mdDate(jstDate(it.created_at))
-  : k === 'purchase_price' || k === 'landing_price' || k === 'list_price' ? (it[k] ? yen(it[k]) : '')
+  : k === 'list_price' ? (it[k] ? yen(withTax(it[k])) : '')
+  : k === 'purchase_price' || k === 'landing_price' ? (it[k] ? yen(it[k]) : '')
   : DATE_FIELDS_REQ.has(k) ? (it[k] ? `${mdDate(it[k])}(${WD[dow(it[k])]})` : '')
   : (it[k] ?? '');
 const todayLabel = () => { const t = jstToday(); return `${mdDate(t)}(${WD[dow(t)]})`; };
