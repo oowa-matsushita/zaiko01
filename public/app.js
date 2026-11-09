@@ -56,15 +56,18 @@ function eventDates() {
   return out;
 }
 // 出庫日：今日から7日分
-function shippedDates() {
+// 出庫日：今日から7日分 ＋ それより先で出庫予定のある日
+function shippedDates(counts = {}) {
   const t = jstToday();
-  return Array.from({ length: 7 }, (_, i) => addDays(t, i));
+  const week = Array.from({ length: 7 }, (_, i) => addDays(t, i));
+  const later = Object.keys(counts).filter((d) => d > week[6] && counts[d] > 0);
+  return [...week, ...later].sort();
 }
 
 // 開催日（金・土）と出庫日（7日分）を、同じ日付が上下にそろう表にする。
 // 列はどちらかに枠がある日付だけ。該当しない側は空きマス
 function renderDateGrid(counts) {
-  const ev = eventDates(), sh = shippedDates();
+  const ev = eventDates(), sh = shippedDates(counts.shipped_date);
   const extra = [state.event_date, state.shipped_date].filter((d) => d && !ev.includes(d) && !sh.includes(d));
   const cols = [...new Set([...ev, ...sh, ...extra])].sort();
   const box = (field, d) => {
