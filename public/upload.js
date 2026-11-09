@@ -36,7 +36,7 @@ async function readFile(file) {
     items = csvToItems(rows);
     if (!items.length) throw new Error('車両データがありません');
     // まず判定だけ（保存はしない）
-    const r = await api('/api/import', { items, dry_run: true, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked });
+    const r = await api('/api/import', { items, dry_run: true, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked, update_grade: $('#update-grade').checked });
     results = r.results;
     render(r);
   } catch (e) {
@@ -64,12 +64,12 @@ function render(r) {
     return `<tr class="${cls}">
       <td class="num">${it.line}</td>
       <td><span class="pill ${cls}">${label}</span>${res.message ? `<div class="muted small">${esc(res.message)}</div>` : ''}</td>
-      <td>${esc(it.first_reg)}</td><td>${esc(it.name)}</td><td>${esc(it.chassis_no)}</td><td>${esc(it.color)}</td><td>${esc(it.color_code)}</td>
+      <td>${esc(it.first_reg)}</td><td>${esc(it.name)}</td><td>${esc(it.grade)}</td><td>${esc(it.chassis_no)}</td><td>${esc(it.color)}</td><td>${esc(it.color_code)}</td>
       <td class="num">${it.mileage != null ? Number(it.mileage).toLocaleString('ja-JP') + 'km' : ''}</td>
       <td class="num">${it.purchase_price ? '¥' + Number(it.purchase_price).toLocaleString('ja-JP') : ''}</td>
       <td class="num">${it.list_price ? '¥' + Math.round(it.list_price * 1.1).toLocaleString('ja-JP') : ''}</td>
 </tr>`;
-  }).join('') || `<tr><td colspan="10" class="empty">新規の車両はありません</td></tr>`;
+  }).join('') || `<tr><td colspan="11" class="empty">新規の車両はありません</td></tr>`;
 }
 
 $('#file').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) readFile(f); e.target.value = ''; });
@@ -94,7 +94,7 @@ $('#btn-import').addEventListener('click', async () => {
   btn.disabled = true;
   btn.textContent = '追加しています…';
   try {
-    const r = await api('/api/import', { items, file_name: fileName, dry_run: false, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked });
+    const r = await api('/api/import', { items, file_name: fileName, dry_run: false, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked, update_grade: $('#update-grade').checked });
     results = r.results;
     toast(`${r.added} 台を追加${r.filled ? `・${r.filled} 台を更新しました` : 'しました'}（スキップ ${r.exists + r.duplicate} 台）`);
     $('#preview').hidden = true;
@@ -111,13 +111,14 @@ $('#btn-import').addEventListener('click', async () => {
 async function recheck() {
   if (!items.length) return;
   try {
-    const r = await api('/api/import', { items, dry_run: true, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked });
+    const r = await api('/api/import', { items, dry_run: true, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked, update_grade: $('#update-grade').checked });
     results = r.results;
     render(r);
   } catch (e) { toast(e.message, true); }
 }
 $('#fill-empty').addEventListener('change', recheck);
 $('#update-list').addEventListener('change', recheck);
+$('#update-grade').addEventListener('change', recheck);
 
 // 最後に取り込んだ日時
 fetch('/api/import').then((r) => r.json()).then(({ last_import: li }) => {
