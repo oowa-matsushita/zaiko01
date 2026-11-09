@@ -76,7 +76,7 @@ function renderDateGrid(counts) {
     return `<button type="button" class="date-box ${cls}" data-field="${field}" data-date="${d}" aria-pressed="${state[field] === d}">
       <span class="d">${shortDate(d)}</span><span class="n">${n}<small>台</small></span></button>`;
   };
-  // 出庫日の枠の中に、その日の陸送会社ボタン（例：シンセイ1 2台）を並べる
+  // 出庫日の枠の中に、その日の陸送会社ボタン（例：シンセイ① 2台）を並べる
   const carrierOrder = (c) => { const i = CARRIERS.indexOf(c); return i < 0 ? 99 : i; };
   const shipCell = (d) => {
     const cs = Object.entries(counts.shipped_carriers?.[d] || {}).sort((a, b) => carrierOrder(a[0]) - carrierOrder(b[0]));
@@ -406,7 +406,7 @@ const EDITABLE = new Set(['first_reg', 'name', 'grade', 'chassis_no', 'color', '
   'event_date', 'shipped_date', 'carrier', 'purchase_price', 'landing_price', 'list_price', 'has_warranty', 'has_manual', 'notes']);
 const DATE_KEYS = new Set(['own_date', 'event_date', 'shipped_date']);
 const VENUES = ['名古屋', '静岡', '廃車'];
-const CARRIERS = ['シンセイ1', 'シンセイ2', 'シンセイ3', 'シンセイ4', 'タカラ', '自社'];
+const CARRIERS = ['シンセイ①', 'シンセイ②', 'シンセイ③', 'シンセイ④', 'タカラ', '自社'];
 const SELECTS = { venue: VENUES, carrier: CARRIERS };
 let editing = null; // { td, item, key }
 
