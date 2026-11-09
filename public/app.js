@@ -858,3 +858,14 @@ function setCarrier(v) {
   try { localStorage.setItem('zaiko-carrier', v); } catch { /* 無視 */ }
 }
 carrierSel.addEventListener('change', () => { setCarrier(carrierSel.value); load(); });
+
+// ---- 「データをアップロード」の下に最終取り込み日時 ----
+function showLastImport() {
+  api('/api/import').then(({ last_import: li }) => {
+    if (!li) return;
+    const t = new Date(li.at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    $('#last-import').textContent = `最終取込 ${t}`;
+    $('#last-import').title = `追加 ${li.added} 台・更新 ${li.updated} 台${li.file ? '（' + li.file + '）' : ''}`;
+  }).catch(() => {});
+}
+showLastImport();

@@ -256,3 +256,5 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 }
 .carrier-chip b { font-weight: 700; }
 .carrier-chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.upload-link { display: inline-grid; justify-items: center; line-height: 1.2; }
+.upload-link small { font-size: .7rem; white-space: nowrap; }

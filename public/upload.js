@@ -10,6 +10,7 @@ const STATUS = {
   error: ['エラー', 'st-err'],
 };
 let items = [];
+let fileName = '';
 let results = [];
 
 function toast(msg, isError = false) {
@@ -29,6 +30,7 @@ async function api(path, body) {
 }
 
 async function readFile(file) {
+  fileName = file.name;
   try {
     const rows = parseCsv(decodeCsv(await file.arrayBuffer()));
     items = csvToItems(rows);
@@ -92,7 +94,7 @@ $('#btn-import').addEventListener('click', async () => {
   btn.disabled = true;
   btn.textContent = '追加しています…';
   try {
-    const r = await api('/api/import', { items, dry_run: false, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked });
+    const r = await api('/api/import', { items, file_name: fileName, dry_run: false, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked });
     results = r.results;
     toast(`${r.added} 台を追加${r.filled ? `・${r.filled} 台を更新しました` : 'しました'}（スキップ ${r.exists + r.duplicate} 台）`);
     $('#preview').hidden = true;
@@ -116,3 +118,11 @@ async function recheck() {
 }
 $('#fill-empty').addEventListener('change', recheck);
 $('#update-list').addEventListener('change', recheck);
+
+// 最後に取り込んだ日時
+fetch('/api/import').then((r) => r.json()).then(({ last_import: li }) => {
+  if (!li) return;
+  const d = new Date(li.at);
+  const t = d.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  $('#last-import').textContent = `前回の取り込み：${t}（追加 ${li.added} 台・更新 ${li.updated} 台${li.file ? '・' + li.file : ''}）`;
+}).catch(() => {});

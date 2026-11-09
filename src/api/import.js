@@ -99,6 +99,15 @@ export async function onRequestPost({ request, env }) {
   }
 
   const count = (s) => results.filter((r) => r.status === s).length;
+  if (!body.dry_run) {
+    // 最後に取り込んだ日時を記録（一覧画面の「データをアップロード」の下に表示）
+    await env.DB.prepare('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)').run();
+    await env.DB.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('last_import', ?1)").bind(JSON.stringify({
+      at: new Date().toISOString(),
+      file: typeof body.file_name === 'string' ? body.file_name.slice(0, 200) : '',
+      added: toInsert.length, updated: fills.length,
+    })).run();
+  }
   return json({
     dry_run: !!body.dry_run,
     added: body.dry_run ? 0 : toInsert.length,
@@ -107,4 +116,11 @@ export async function onRequestPost({ request, env }) {
     new: count('new'), exists: count('exists'), duplicate: count('duplicate'), error: count('error'),
     results,
   });
+}
+
+// GET /api/import  最後に取り込んだ日時
+export async function onRequestGet({ env }) {
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)').run();
+  const row = await env.DB.prepare("SELECT value FROM meta WHERE key = 'last_import'").first();
+  return json({ last_import: row ? JSON.parse(row.value) : null });
 }
