@@ -139,7 +139,7 @@ async function load() {
 const COLS = [
   ['id', 'No.', 'rowno'],
   ['first_reg', '初度登録'],
-  ['name', '車名', 'sticky'],
+  ['name', '車名'],
   ['grade', 'グレード'],
   ['chassis_no', '車台番号'],
   ['color', '色'],
@@ -254,29 +254,30 @@ function sortedItems() {
 const spec = (e) => { const [k, n] = e.split('*'); return { k, span: Number(n) || 1 }; };
 const colspanAttr = (n) => (n > 1 ? ` colspan="${n}"` : '');
 
+// 横スクロールしても左に固定する列（No.・初度登録・車名の3列）
+const FREEZE = 3;
+const fzClass = (r, i) => { const col = r === 0 ? i : i + 1; return col < FREEZE ? ` fz fz${col}` : ''; };
+
 function renderHead() {
   const rows = layout();
-  $('#tbl thead').innerHTML = rows.map((keys, r) => `<tr>${keys.map((e) => {
+  $('#tbl thead').innerHTML = rows.map((keys, r) => `<tr>${keys.map((e, i) => {
     const { k, span: cs } = spec(e);
     const { label, cls } = COL[k];
     const arrow = sortState.key === k ? (sortState.dir > 0 ? '▲' : '▼') : '';
     const span = (k === 'id' && rows.length > 1 ? ` rowspan="${rows.length}"` : '') + colspanAttr(cs);
-    return `<th data-key="${k}"${span} class="${cls === 'sticky' || cls === 'center' ? cls : ''}${r > 0 ? ' sub' : ''}">${label}<span class="arrow">${arrow}</span></th>`;
+    return `<th data-key="${k}"${span} class="${cls === 'center' ? cls : ''}${r > 0 ? ' sub' : ''}${rows.length > 1 || r === 0 ? fzClass(r, i) : ''}">${label}<span class="arrow">${arrow}</span></th>`;
   }).join('')}</tr>`).join('');
   updateStickyHead();
-  // 2段表示は横幅が収まるので列の固定はしない
-  if (rows.length > 1) document.querySelectorAll('#tbl thead th.sticky').forEach((th) => th.classList.remove('sticky'));
 }
 
 function rowHtml(it) {
   const rows = layout();
-  return rows.map((keys, r) => `<tr data-id="${it.id}"${r === rows.length - 1 ? ' class="last"' : ''}>${keys.map((e) => {
+  return rows.map((keys, r) => `<tr data-id="${it.id}"${r === rows.length - 1 ? ' class="last"' : ''}>${keys.map((e, i) => {
     const { k, span } = spec(e);
     if (k === 'id') {
-      return `<td class="rowno"${rows.length > 1 ? ` rowspan="${rows.length}"` : ''}><button class="edit-btn" data-open="${it.id}" title="フォームで編集" aria-label="フォームで編集">✎</button>${it.id}</td>`;
+      return `<td class="rowno fz fz0"${rows.length > 1 ? ` rowspan="${rows.length}"` : ''}><button class="edit-btn" data-open="${it.id}" title="フォームで編集" aria-label="フォームで編集">✎</button>${it.id}</td>`;
     }
-    const base = rows.length > 1 && COL[k].cls === 'sticky' ? '' : COL[k].cls;
-    const cls = [base, EDITABLE.has(k) ? 'editable' : ''].filter(Boolean).join(' ');
+    const cls = [COL[k].cls, EDITABLE.has(k) ? 'editable' : ''].filter(Boolean).join(' ') + fzClass(r, i);
     return `<td class="${cls}" data-key="${k}"${k === 'color' && it.color ? ` title="${esc(it.color)}"` : ''}${colspanAttr(span)}>${cellHtml(it, k)}</td>`;
   }).join('')}</tr>`).join('');
 }
@@ -828,8 +829,18 @@ function fitTable() {
   updateStickyHead();
   updateScrollHints();
 }
+// 固定列の左位置を、実際の列幅から計算する
+function updateFreeze() {
+  const ths = [...document.querySelectorAll('#tbl thead tr:first-child th')].slice(0, FREEZE);
+  let left = 0;
+  ths.forEach((th, i) => {
+    $('#tbl').style.setProperty(`--fz${i}`, left + 'px');
+    left += th.getBoundingClientRect().width;
+  });
+}
 // 2段目の見出しを1段目の下に固定する
 function updateStickyHead() {
+  updateFreeze();
   const first = $('#tbl thead tr');
   const h = first ? first.getBoundingClientRect().height : 0;
   document.querySelectorAll('#tbl thead th.sub').forEach((th) => { th.style.top = h + 'px'; });

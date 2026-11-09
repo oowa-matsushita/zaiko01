@@ -105,8 +105,6 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 4px; }
   cursor: pointer; user-select: none;
 }
 #tbl thead th .arrow { color: var(--muted); font-size: .75rem; margin-left: 2px; }
-#tbl th.sticky, #tbl td.sticky { position: sticky; left: 0; z-index: 1; background: inherit; }
-#tbl thead th.sticky { z-index: 3; background: var(--thead); }
 #tbl tbody.vehicle { background: var(--card); }
 #tbl tbody.vehicle tr { background: inherit; }
 #tbl td.editable { cursor: cell; }
@@ -258,3 +256,12 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 .carrier-chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 .upload-link { display: inline-grid; justify-items: center; line-height: 1.2; }
 .upload-link small { font-size: .7rem; white-space: nowrap; }
+/* 横スクロールしても No.・初度登録・車名 は左に固定 */
+#tbl .fz { position: sticky; z-index: 1; background: inherit; }
+#tbl td.fz { background-color: var(--card); }
+#tbl tbody.vehicle:nth-of-type(even) td.fz { background-color: var(--zebra); }
+#tbl tbody.vehicle:hover td.fz { background-color: var(--hover); }
+#tbl thead th.fz { z-index: 4; background: var(--thead); }
+#tbl .fz0 { left: var(--fz0, 0); }
+#tbl .fz1 { left: var(--fz1, 0); }
+#tbl .fz2 { left: var(--fz2, 0); box-shadow: inset -2px 0 0 var(--sep); }
