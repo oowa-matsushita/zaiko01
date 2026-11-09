@@ -1,7 +1,7 @@
 // 在庫アイテムの共通処理
 // name = 車名
 export const FIELDS = [
-  'name', 'first_reg', 'chassis_no', 'color', 'color_code', 'mileage', 'mileage_unit',
+  'name', 'grade', 'first_reg', 'chassis_no', 'color', 'color_code', 'mileage', 'mileage_unit',
   'sales_points', 'has_warranty', 'has_manual',
   'own_company', 'own_date', 'venue', 'event_date', 'shipped_date', 'carrier', 'landing_price',
   'model_no', 'category', 'condition_rank', 'quantity',
@@ -36,6 +36,7 @@ const ADDED_COLUMNS = {
   first_reg: 'TEXT',     // 初度登録（例：平成24年06月）
   landing_price: 'INTEGER', // 着地予想（円）
   carrier: 'TEXT',       // 陸送会社
+  grade: 'TEXT',         // グレード
 };
 let schemaReady = null;
 export function ensureSchema(db) {

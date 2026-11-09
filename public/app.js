@@ -140,6 +140,7 @@ const COLS = [
   ['id', 'No.', 'rowno'],
   ['first_reg', '初度登録'],
   ['name', '車名', 'sticky'],
+  ['grade', 'グレード'],
   ['chassis_no', '車台番号'],
   ['color', '色'],
   ['color_code', 'カラーコード'],
@@ -161,8 +162,8 @@ COL.blank = { label: '', cls: 'blank' };
 const LAYOUTS = {
   1: [COLS.map((c) => c[0])],
   2: [
-    ['id', 'first_reg', 'name', 'chassis_no', 'color', 'color_code', 'mileage', 'purchase_price', 'landing_price', 'list_price'],
-    ['blank', 'own_date', 'venue', 'event_date', 'shipped_date', 'carrier', 'created_at', 'notes*2'],
+    ['id', 'first_reg', 'name', 'grade', 'chassis_no', 'color', 'color_code', 'mileage', 'purchase_price', 'landing_price', 'list_price'],
+    ['blank', 'own_date', 'blank', 'venue', 'event_date', 'shipped_date', 'carrier', 'created_at', 'notes*2'],
   ],
 };
 let layoutKey = '2';
@@ -397,7 +398,7 @@ document.addEventListener('click', (e) => {
 });
 
 // ---- 一覧での直接編集（ダブルクリック／ダブルタップ） ----
-const EDITABLE = new Set(['first_reg', 'name', 'chassis_no', 'color', 'color_code', 'mileage', 'own_date', 'venue',
+const EDITABLE = new Set(['first_reg', 'name', 'grade', 'chassis_no', 'color', 'color_code', 'mileage', 'own_date', 'venue',
   'event_date', 'shipped_date', 'carrier', 'purchase_price', 'landing_price', 'list_price', 'has_warranty', 'has_manual', 'notes']);
 const DATE_KEYS = new Set(['own_date', 'event_date', 'shipped_date']);
 const VENUES = ['名古屋', '静岡', '廃車'];
