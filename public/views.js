@@ -1,6 +1,8 @@
+import { decodeCsv, parseCsv, csvToSnapshot, ymFromFileName } from './import-parse.js';
+
 // 画面のタブ切り替え（在庫一覧／仕入れ台帳／回転率）と、仕入れ台帳・回転率の表示
 // 仕入日 = 買取日（purchase_date）、なければ登録日
-// 出口日 = 販売日（sold_date）、なければ開催日（今日以前のもの）。出口日のない車両は在庫として数える
+// 回転率は月初在庫CSV（毎月取り込み）から出す
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const num = (n) => Number(n).toLocaleString('ja-JP');
@@ -14,8 +16,8 @@ const isDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d || '');
 const kmText = (it) => it.mileage == null ? ''
   : it.mileage_unit === 'mile' ? `${num(it.mileage)}マイル` : `${num(it.mileage)}km`;
 
-async function api(path) {
-  const res = await fetch(path);
+async function api(path, opts = {}) {
+  const res = await fetch(path, { ...opts, headers: { 'content-type': 'application/json', ...(opts.headers || {}) } });
   const data = await res.json().catch(() => ({}));
   if (res.status === 401 && data.login) { location.href = '/login'; throw new Error('ログインしてください'); }
   if (!res.ok) throw new Error(data.error || `エラー (${res.status})`);
@@ -30,13 +32,7 @@ async function fetchAll() {
     out.push(...d.items);
     if (out.length >= d.total || !d.items.length) break;
   }
-  const today = jstToday();
-  return out.map((it) => {
-    const inDate = isDate(it.purchase_date) ? it.purchase_date : jstDate(it.created_at);
-    const exit = isDate(it.sold_date) ? it.sold_date
-      : isDate(it.event_date) && it.event_date <= today ? it.event_date : '';
-    return { ...it, inDate, exit };
-  });
+  return out.map((it) => ({ ...it, inDate: isDate(it.purchase_date) ? it.purchase_date : jstDate(it.created_at) }));
 }
 
 // ---- タブ ----
@@ -75,9 +71,8 @@ async function refresh() {
   const box = $('#view-' + view);
   if (!box.innerHTML) box.innerHTML = '<p class="empty">読み込み中…</p>';
   try {
-    const items = await fetchAll();
-    if (view === 'ledger') renderLedger(items);
-    else if (view === 'turnover') renderTurnover(items);
+    if (view === 'turnover') await loadTurnover();
+    else if (view === 'ledger') renderLedger(await fetchAll());
   } catch (e) {
     box.innerHTML = `<p class="empty">読み込みに失敗しました：${esc(e.message)}</p>`;
   }
@@ -176,82 +171,199 @@ function renderLedger(items) {
   });
 }
 
-// ---- 回転率 ----
-// 月ごとに：仕入台数、出口台数、月末在庫、回転率（出口台数 ÷ 平均在庫（月初と月末の平均））、出た車の平均在庫日数
-function renderTurnover(items) {
-  const today = jstToday();
-  const valid = items.filter((it) => it.inDate);
-  const stockOn = (d) => valid.filter((it) => it.inDate <= d && (!it.exit || it.exit > d)).length;
-  const monthEnd = (ym) => { const [y, m] = ym.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10); };
-  const months = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) - 1 - i, 1));
-    months.push(d.toISOString().slice(0, 7));
+// ---- 回転率（月初在庫CSVから） ----
+// 回転率 = その月の販売台数 ÷ 月初在庫台数
+// 販売台数は「その月の月初在庫にあって翌月の月初在庫にない車」を自動で数える。手入力があればそちらを優先
+let turnMonths = [];
+let turnSel = '';
+let pending = null; // 取り込み前の確認中のCSV { file_name, rows, ym }
+const details = new Map(); // ym → 月の詳細（車両一覧など）
+const soldOf = (m) => m.sold_manual ?? m.sold_auto;
+const pct = (m) => { const s = soldOf(m); return s == null || !m.count ? null : s / m.count; };
+const rateHtml = (m) => { const r = pct(m); return r == null ? '—' : `${(r * 100).toFixed(1)}%<small class="muted">（${r.toFixed(2)}回）</small>`; };
+const prevMonth = (ym) => new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7) - 2, 1)).toISOString().slice(0, 7);
+const nextMonth = (ym) => new Date(Date.UTC(+ym.slice(0, 4), +ym.slice(5, 7), 1)).toISOString().slice(0, 7);
+
+function toast(msg, isError = false) {
+  const t = $('#toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { t.className = 'toast'; }, 3000);
+}
+
+async function loadTurnover({ reload = false } = {}) {
+  if (reload) details.clear();
+  turnMonths = (await api('/api/snapshots')).months;
+  if (!turnMonths.some((m) => m.ym === turnSel)) {
+    turnSel = (turnMonths.find((m) => soldOf(m) != null) || turnMonths[0])?.ym || '';
   }
-  const table = months.map((ym) => {
-    const start = ym + '-01';
-    const end = ym === today.slice(0, 7) ? today : monthEnd(ym);
-    const prevEnd = new Date(Date.parse(start + 'T00:00:00Z') - 864e5).toISOString().slice(0, 10);
-    const bought = valid.filter((it) => it.inDate.startsWith(ym)).length;
-    const out = valid.filter((it) => it.exit && it.exit.startsWith(ym));
-    const open = stockOn(prevEnd), close = stockOn(end);
-    const avgStock = (open + close) / 2;
-    const avgDays = out.length ? out.reduce((s, it) => s + Math.max(0, days(it.inDate, it.exit)), 0) / out.length : null;
-    return { ym, bought, out: out.length, open, close, rate: avgStock ? out.length / avgStock : null, avgDays };
-  }).reverse();
+  renderTurnover();
+  if (turnSel && !details.has(turnSel)) {
+    const ym = turnSel;
+    try { details.set(ym, await api('/api/snapshots/' + ym)); } catch (e) { details.set(ym, { error: e.message }); }
+    if (current === 'turnover' && turnSel === ym) renderTurnover();
+  }
+}
 
-  // 直近90日に出た車
-  const since = new Date(Date.parse(today + 'T00:00:00Z') - 90 * 864e5).toISOString().slice(0, 10);
-  const recent = valid.filter((it) => it.exit && it.exit > since && it.exit <= today);
-  const recentDays = recent.length ? recent.reduce((s, it) => s + Math.max(0, days(it.inDate, it.exit)), 0) / recent.length : null;
-  // 今ある在庫と経過日数
-  const stock = valid.filter((it) => !it.exit).map((it) => ({ ...it, age: Math.max(0, days(it.inDate, today)) }))
-    .sort((a, b) => b.age - a.age);
-  const stockDays = stock.length ? stock.reduce((s, it) => s + it.age, 0) / stock.length : null;
-  const stockBuy = stock.reduce((s, it) => s + (Number(it.purchase_price) || 0), 0);
-  // 年換算の回転率（直近12か月の出口台数 ÷ 12か月の平均在庫）
-  const out12 = table.reduce((s, r) => s + r.out, 0);
-  const avg12 = table.reduce((s, r) => s + (r.open + r.close) / 2, 0) / table.length;
-  const yearRate = avg12 ? out12 / avg12 : null;
+function pendingHtml() {
+  if (!pending) return '';
+  const { rows, ym, file_name } = pending;
+  const cost = rows.reduce((s, r) => s + (r.cost || 0), 0);
+  const exists = turnMonths.some((m) => m.ym === ym);
+  const later = rows.filter((r) => r.in && r.in >= nextMonth(ym) + '-01').length;
+  return `<div class="panel pending">
+    <h3>月初在庫の取り込み：${esc(file_name)}</h3>
+    <p><b>${num(rows.length)}台</b>／仕入金額 合計 <b>${yen(cost)}</b></p>
+    <label>何月の月初在庫ですか？ <input type="month" id="pend-ym" value="${ym}"></label>
+    ${exists ? `<p class="warn">${ymLabel(ym)}の月初在庫はすでにあります。取り込むと置き換えます。</p>` : ''}
+    ${later ? `<p class="warn">在庫Noの日付が${ymLabel(ym)}より後の車が ${num(later)}台 あります。月の選択が合っているか確認してください。</p>` : ''}
+    <div class="actions"><span class="spacer"></span><button type="button" id="pend-cancel">キャンセル</button>
+      <button type="button" class="primary" id="pend-save">取り込む</button></div>
+  </div>`;
+}
 
-  const BUCKETS = [[0, 14, '0〜14日'], [15, 30, '15〜30日'], [31, 60, '31〜60日'], [61, 90, '61〜90日'], [91, Infinity, '91日以上']];
-  const bucketCounts = BUCKETS.map(([a, b, label]) => ({ label, n: stock.filter((it) => it.age >= a && it.age <= b).length, warn: a >= 61 }));
-  const maxN = Math.max(1, ...bucketCounts.map((b) => b.n));
-  const f1 = (v) => v == null ? '—' : v.toFixed(1);
-  const fd = (v) => v == null ? '—' : Math.round(v) + '日';
+function agingHtml(d) {
+  const start = d.ym + '-01';
+  const BUCKETS = [[0, 30, '30日以内'], [31, 60, '31〜60日'], [61, 90, '61〜90日'], [91, 180, '91〜180日'], [181, Infinity, '181日以上']];
+  const withAge = d.rows.map((r) => ({ ...r, age: r.in ? Math.max(0, days(r.in, start)) : null }));
+  const b = BUCKETS.map(([lo, hi, label]) => {
+    const list = withAge.filter((r) => r.age != null && r.age >= lo && r.age <= hi);
+    return { label, n: list.length, cost: list.reduce((s, r) => s + (r.cost || 0), 0), warn: lo >= 91 };
+  });
+  const unknown = withAge.filter((r) => r.age == null).length;
+  const maxN = Math.max(1, ...b.map((x) => x.n));
+  return `<h3>月初時点の在庫日数（在庫Noの日付から）</h3>
+    <div class="bars">${b.map((x) => `<div class="bar-row wide"><span>${x.label}</span>
+      <span class="bar"><i class="${x.warn ? 'warn' : ''}" style="width:${(x.n / maxN) * 100}%"></i></span><b>${num(x.n)}台</b><small class="muted">${yen(x.cost)}</small></div>`).join('')}</div>
+    ${unknown ? `<p class="muted hint">在庫Noから日付が読めない車：${num(unknown)}台</p>` : ''}`;
+}
 
-  $('#view-turnover').innerHTML = `
-    <div class="view-bar"><h2>回転率</h2><span class="spacer"></span><button type="button" id="turn-print">🖨 印刷</button></div>
+const carTable = (list, empty) => `<div class="scroll-box"><table class="rtbl">
+  <thead><tr><th>在庫No</th><th>メーカー</th><th>車名</th><th>初度</th><th class="r">走行</th><th class="r">仕入金額</th></tr></thead>
+  <tbody>${list.length ? list.map((r) => `<tr><td>${esc(r.no)}</td><td>${esc(r.maker)}</td><td class="b">${esc(r.name)}</td><td>${esc(r.reg)}</td>
+    <td class="r">${r.km == null ? '' : num(r.km) + 'km'}</td><td class="r">${r.cost == null ? '' : yen(r.cost)}</td></tr>`).join('')
+    : `<tr><td colspan="6" class="empty">${empty}</td></tr>`}</tbody></table></div>`;
+
+function detailHtml(m) {
+  const d = details.get(m.ym);
+  if (!d) return '<p class="empty">読み込み中…</p>';
+  if (d.error) return `<p class="empty">読み込みに失敗しました：${esc(d.error)}</p>`;
+  const next = ymLabel(nextMonth(m.ym));
+  return `<div class="report-grid">
+    <div class="report-table">
+      <h3>販売した車（${ymLabel(m.ym)}の月初在庫にあり、${next}の月初在庫にない車）${d.sold ? ` ${num(d.sold.length)}台` : ''}</h3>
+      ${d.sold ? carTable(d.sold, 'ありません') : `<p class="muted">${next}の月初在庫を取り込むと表示されます。</p>`}
+      <h3>仕入れた車（${next}の月初在庫で新しく増えた車）${d.bought ? ` ${num(d.bought.length)}台` : ''}</h3>
+      ${d.bought ? carTable(d.bought, 'ありません') : `<p class="muted">${next}の月初在庫を取り込むと表示されます。</p>`}
+    </div>
+    <div class="report-side">
+      <div class="panel">
+        <h3>${ymLabel(m.ym)}の販売台数</h3>
+        <p class="muted">自動：${m.sold_auto == null ? `${next}の月初在庫を取り込むと数えます` : num(m.sold_auto) + '台'}</p>
+        <label class="inline">手入力 <input type="number" id="sold-input" min="0" inputmode="numeric" value="${m.sold_manual ?? ''}" placeholder="台数"> 台</label>
+        <div class="actions"><button type="button" id="sold-clear"${m.sold_manual == null ? ' disabled' : ''}>自動に戻す</button>
+          <span class="spacer"></span><button type="button" class="primary" id="sold-save">保存</button></div>
+        <p class="muted hint">手入力があると、回転率は手入力の台数で計算します。</p>
+      </div>
+      ${agingHtml(d)}
+      <p class="muted hint">取り込んだファイル：${esc(m.file_name)}（${esc(m.uploaded_at)} UTC）<br>
+        <button type="button" id="snap-delete" class="danger small">この月の月初在庫を削除</button></p>
+    </div>
+  </div>`;
+}
+
+function renderTurnover() {
+  const sel = turnMonths.find((m) => m.ym === turnSel);
+  const box = $('#view-turnover');
+  box.innerHTML = `
+    <div class="view-bar"><h2>回転率</h2><span class="spacer"></span>
+      <label class="file-btn">📥 月初在庫CSVを取り込む<input type="file" id="snap-file" accept=".csv,text/csv" hidden></label>
+      <button type="button" id="turn-print">🖨 印刷</button></div>
+    ${pendingHtml()}
+    ${!turnMonths.length ? `<div class="panel"><p>まだ月初在庫がありません。</p>
+      <p class="muted">「📥 月初在庫CSVを取り込む」から、毎月の月初在庫のCSV（在庫No・車名・愛称名・車台番号・仕入金額 などの列）を取り込んでください。
+      2か月分そろうと、その月の販売台数と回転率が自動で出ます。</p></div>` : `
     <div class="stats">
-      ${stat('在庫回転率（年換算）', yearRate == null ? '—' : f1(yearRate) + '回', '直近12か月の出口台数 ÷ 平均在庫台数')}
-      ${stat('平均在庫日数（直近90日）', fd(recentDays), `直近90日に出た ${num(recent.length)}台`)}
-      ${stat('現在の在庫', num(stock.length) + '台', `買取額 ${yen(stockBuy)}`)}
-      ${stat('在庫の平均経過日数', fd(stockDays))}
+      ${stat(`${ymLabel(sel.ym)}の回転率`, rateHtml(sel), '販売台数 ÷ 月初在庫台数')}
+      ${stat('月初在庫', num(sel.count) + '台', yen(sel.cost_total))}
+      ${stat('販売台数', soldOf(sel) == null ? '—' : num(soldOf(sel)) + '台', sel.sold_manual != null ? '手入力' : sel.sold_auto != null ? '自動（翌月の月初在庫と比較）' : '翌月の月初在庫が未取り込み')}
+      ${stat('仕入台数', sel.bought_auto == null ? '—' : num(sel.bought_auto) + '台', '翌月の月初在庫で増えた車')}
     </div>
-    <div class="report-grid">
-      <div class="report-table">
-        <h3>月別の回転率</h3>
-        <table class="rtbl">
-          <thead><tr><th>月</th><th class="r">仕入台数</th><th class="r">出口台数</th><th class="r">月末在庫</th><th class="r">回転率</th><th class="r">平均在庫日数</th></tr></thead>
-          <tbody>${table.map((r) => `<tr><td>${ymLabel(r.ym)}${r.ym === today.slice(0, 7) ? '<small class="muted">（今日まで）</small>' : ''}</td>
-            <td class="r">${num(r.bought)}</td><td class="r">${num(r.out)}</td><td class="r">${num(r.close)}</td>
-            <td class="r b">${r.rate == null ? '—' : r.rate.toFixed(2) + '回'}</td><td class="r">${fd(r.avgDays)}</td></tr>`).join('')}</tbody>
-        </table>
-      </div>
-      <div class="report-side">
-        <h3>在庫の経過日数</h3>
-        <div class="bars">${bucketCounts.map((b) => `<div class="bar-row"><span>${b.label}</span>
-          <span class="bar"><i class="${b.warn ? 'warn' : ''}" style="width:${(b.n / maxN) * 100}%"></i></span><b>${num(b.n)}台</b></div>`).join('')}</div>
-        <h3>長く残っている車（61日以上）</h3>
-        <table class="rtbl"><thead><tr><th>車名</th><th>仕入日</th><th class="r">経過</th></tr></thead>
-          <tbody>${stock.filter((it) => it.age >= 61).slice(0, 30).map((it) =>
-            `<tr><td class="b">${esc(it.name)}</td><td>${mdLabel(it.inDate)}</td><td class="r minus">${it.age}日</td></tr>`).join('')
-            || '<tr><td colspan="3" class="empty">ありません</td></tr>'}</tbody></table>
-      </div>
-    </div>
-    <p class="muted hint">仕入日＝買取日（未入力なら登録日）。出口日＝販売日（未入力なら開催日。今日より先の開催日はまだ在庫として数えます）。
-      回転率＝その月の出口台数 ÷ 平均在庫（月初と月末の在庫台数の平均）。</p>`;
+    <h3>月別の回転率</h3>
+    <div class="report-table"><table class="rtbl click">
+      <thead><tr><th>月</th><th class="r">月初在庫</th><th class="r">月初在庫金額</th><th class="r">販売台数</th><th class="r">回転率</th><th class="r">仕入台数</th></tr></thead>
+      <tbody>${turnMonths.map((m) => `<tr data-month="${m.ym}" class="${m.ym === turnSel ? 'sel' : ''}">
+        <td>${ymLabel(m.ym)}</td><td class="r">${num(m.count)}台</td><td class="r">${yen(m.cost_total)}</td>
+        <td class="r">${soldOf(m) == null ? '<span class="muted">—</span>' : num(soldOf(m)) + '台'}${m.sold_manual != null ? ' <small class="muted">手</small>' : ''}</td>
+        <td class="r b">${rateHtml(m)}</td><td class="r">${m.bought_auto == null ? '—' : num(m.bought_auto) + '台'}</td></tr>`).join('')}</tbody>
+    </table></div>
+    <h3 class="detail-title">${ymLabel(sel.ym)}の詳細</h3>
+    ${detailHtml(sel)}`}
+    <p class="muted hint">回転率 ＝ その月の販売台数 ÷ 月初在庫台数。販売台数は、その月の月初在庫にあって翌月の月初在庫にない車の台数（車台番号で照合）。
+      手入力した月は手入力の台数を使います。月別の行を押すとその月の詳細を表示します。</p>`;
+
   $('#turn-print').addEventListener('click', () => window.print());
+  $('#snap-file').addEventListener('change', onSnapFile);
+  box.querySelector('.rtbl.click tbody')?.addEventListener('click', (e) => {
+    const tr = e.target.closest('tr[data-month]');
+    if (tr) { turnSel = tr.dataset.month; loadTurnover(); }
+  });
+  if (pending) {
+    $('#pend-ym').addEventListener('change', (e) => { if (/^\d{4}-\d{2}$/.test(e.target.value)) { pending.ym = e.target.value; renderTurnover(); } });
+    $('#pend-cancel').addEventListener('click', () => { pending = null; renderTurnover(); });
+    $('#pend-save').addEventListener('click', savePending);
+  }
+  $('#sold-save')?.addEventListener('click', () => saveSold($('#sold-input').value));
+  $('#sold-clear')?.addEventListener('click', () => saveSold(null));
+  $('#snap-delete')?.addEventListener('click', async () => {
+    if (!confirm(`${ymLabel(turnSel)}の月初在庫を削除しますか？`)) return;
+    try { await api('/api/snapshots/' + turnSel, { method: 'DELETE' }); toast('削除しました'); turnSel = ''; await loadTurnover({ reload: true }); }
+    catch (e) { toast(e.message, true); }
+  });
+}
+
+async function onSnapFile(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    const rows = csvToSnapshot(parseCsv(decodeCsv(await file.arrayBuffer())));
+    if (!rows.length) throw new Error('車両が見つかりません');
+    const last = turnMonths[0]?.ym;
+    pending = { file_name: file.name, rows, ym: ymFromFileName(file.name) || (last ? nextMonth(last) : jstToday().slice(0, 7)) };
+    renderTurnover();
+  } catch (err) {
+    toast('CSVを読み込めませんでした：' + err.message, true);
+  }
+}
+
+async function savePending() {
+  const btn = $('#pend-save');
+  btn.disabled = true;
+  btn.textContent = '取り込み中…';
+  try {
+    const r = await api('/api/snapshots', { method: 'POST', body: JSON.stringify({ ym: pending.ym, file_name: pending.file_name, rows: pending.rows }) });
+    toast(`${ymLabel(r.ym)}の月初在庫を取り込みました（${num(r.count)}台）`);
+    turnSel = prevMonth(r.ym);
+    if (!r.months.some((m) => m.ym === turnSel && m.sold_auto != null)) turnSel = r.ym;
+    pending = null;
+    await loadTurnover({ reload: true });
+  } catch (err) {
+    toast('取り込めませんでした：' + err.message, true);
+    btn.disabled = false;
+    btn.textContent = '取り込む';
+  }
+}
+
+async function saveSold(v) {
+  if (v !== null && (v === '' || !(Number(v) >= 0))) { toast('販売台数を0以上の数字で入力してください', true); return; }
+  try {
+    await api('/api/snapshots/' + turnSel, { method: 'PATCH', body: JSON.stringify({ sold_manual: v === null ? null : Number(v) }) });
+    toast(v === null ? '自動の販売台数に戻しました' : '販売台数を保存しました');
+    await loadTurnover();
+  } catch (e) { toast(e.message, true); }
 }
 
 // 最初に開く画面：URL の #ledger などを優先、なければ前回の画面

@@ -9,6 +9,8 @@ Cloudflare Workers（静的アセット）+ D1 で動く、個人用の買取在
 - 検索、ステータス別の絞り込み、並び替え、在庫の経過日数表示
 - 集計：在庫件数、在庫の買取総額、今月の買取・売上・利益
 - 一覧印刷（A4横・PDF保存可）、依頼文（メール/LINE貼り付け用テキスト・PDF）
+- 画面上部のタブで「在庫一覧／仕入れ台帳／回転率」を切り替え
+- 回転率：毎月の月初在庫CSVを取り込むと、回転率＝その月の販売台数÷月初在庫台数 を表示（販売台数は翌月の月初在庫と車台番号で照合して自動で数える。手入力も可）
 - コーションプレートを撮影して車台番号・カラーコードを自動入力（Cloudflare Workers AI。`wrangler.toml` の `[ai]`）
 
 ## 構成
@@ -67,5 +69,7 @@ npm run dev     # http://localhost:8787（.dev.vars に LOGIN_ID など3つを�
 | PATCH | `/api/items/:id` | 指定項目だけ更新 |
 | DELETE | `/api/items/:id` | 削除 |
 | GET | `/api/stats` | 集計 |
+| GET / POST | `/api/snapshots` | 月初在庫の一覧／取り込み（`{ ym, file_name, rows }`） |
+| GET / PATCH / DELETE | `/api/snapshots/:ym` | 月初在庫の詳細／販売台数の手入力（`{ sold_manual }`）／削除 |
 
 外部から使う場合は、Pages の環境変数に `API_TOKEN` を設定し、`Authorization: Bearer <API_TOKEN>` を付けて呼び出します（Access を使う場合はサービストークンの設定も必要）。

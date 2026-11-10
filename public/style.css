@@ -299,3 +299,28 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
   .report-grid { grid-template-columns: 1fr; }
   .rtbl { font-size: 10px; }
 }
+
+/* ---- 回転率（月初在庫） ---- */
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; }
+.panel h3 { margin-top: 0; }
+.panel p { margin: 6px 0; }
+.panel.pending { border-color: var(--accent); }
+.panel label { display: flex; align-items: center; gap: 8px; font-size: .9rem; flex-wrap: wrap; }
+.panel input[type="month"], .panel input[type="number"] { width: auto; }
+.panel .actions { margin-top: 8px; }
+.warn { color: var(--minus); font-size: .9rem; }
+.file-btn {
+  display: inline-block; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-text);
+  border-radius: 8px; padding: 8px 14px; cursor: pointer;
+}
+.scroll-box { max-height: 360px; overflow: auto; margin-bottom: 14px; border: 1px solid var(--tline); }
+.scroll-box .rtbl { border: 0; }
+.scroll-box .rtbl thead th { position: sticky; top: 0; }
+.bar-row.wide { grid-template-columns: 5.5em 1fr 3.5em 7.5em; }
+.bar-row.wide small { text-align: right; font-variant-numeric: tabular-nums; }
+button.small { padding: 2px 10px; font-size: .8rem; margin-top: 6px; }
+button:disabled { opacity: .5; cursor: default; }
+.detail-title { margin-top: 18px; }
+.report-table h3:not(:first-child) { margin-top: 4px; }
+@media print { .file-btn, .panel.pending, #snap-delete { display: none !important; } .scroll-box { max-height: none; } }
+.view-bar label.file-btn { color: var(--accent-text); font-size: 1rem; }

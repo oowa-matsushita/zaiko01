@@ -95,3 +95,43 @@ export function csvToItems(rows) {
     };
   });
 }
+
+// ---- 月初在庫（回転率用） ----
+// 在庫No「Z26-0927-05」の 26-0927 を入庫日（2026-09-27）とみなす
+export function inDateFromStockNo(no) {
+  const m = String(no || '').match(/^[A-Za-z]*(\d{2})-(\d{2})(\d{2})-/);
+  if (!m) return '';
+  const iso = `20${m[1]}-${m[2]}-${m[3]}`;
+  const d = new Date(iso + 'T00:00:00Z');
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === iso ? iso : '';
+}
+
+// 在庫一覧CSV → 月初在庫の行 { no, maker, name, reg, color, km, type, chassis, list, cost, in }
+export function csvToSnapshot(rows) {
+  if (rows.length < 2) throw new Error('データがありません');
+  const head = rows[0].map((h) => nfkc(h));
+  const find = (names) => head.findIndex((h) => names.includes(h));
+  const idx = {
+    no: find(HEAD.stock_no), maker: find(['車名', 'メーカー']), name: find(['愛称名', '車種', '車種名']),
+    reg: find(HEAD.first_reg), color: find(HEAD.color), km: find(HEAD.mileage), type: find(HEAD.type),
+    chassis: find(HEAD.chassis), list: find(HEAD.list), cost: find(HEAD.purchase),
+  };
+  if (idx.chassis < 0 && idx.no < 0) throw new Error('「車台番号」または「在庫No」の列が見つかりません');
+  const get = (r, k) => (idx[k] >= 0 ? nfkc(r[idx[k]]) : '');
+  const yen = (r, k) => { const s = get(r, k).replace(/[^\d]/g, ''); return s === '' ? null : Number(s); };
+  return rows.slice(1).map((r) => {
+    const no = get(r, 'no');
+    const km = get(r, 'km').replace(/[^\d]/g, '');
+    return {
+      no, maker: get(r, 'maker'), name: get(r, 'name') || get(r, 'maker'), reg: get(r, 'reg'),
+      color: get(r, 'color').replace(/[★☆]/g, '').trim(), km: km === '' ? null : Number(km), type: get(r, 'type'),
+      chassis: normChassis(get(r, 'chassis')), list: yen(r, 'list'), cost: yen(r, 'cost'), in: inDateFromStockNo(no),
+    };
+  }).filter((r) => r.chassis || r.no);
+}
+
+// ファイル名の「202610」などから月（2026-10）を読み取る
+export function ymFromFileName(name) {
+  const m = String(name || '').match(/(20\d{2})[-_年.]?(0[1-9]|1[0-2])(?!\d)/);
+  return m ? `${m[1]}-${m[2]}` : '';
+}
