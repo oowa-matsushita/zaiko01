@@ -169,9 +169,8 @@ const LAYOUTS = {
     ['blank', 'own_date', 'blank', 'venue', 'event_date', 'shipped_date', 'carrier', 'created_at', 'notes*2'],
   ],
 };
-let layoutKey = '2';
-try { layoutKey = localStorage.getItem('zaiko-layout') || '2'; } catch { /* 保存できなくても既定で表示 */ }
-const layout = () => LAYOUTS[layoutKey] || LAYOUTS[2];
+// 表示は1段（横長）のみ
+const layout = () => LAYOUTS[1];
 const sortState = { key: 'id', dir: -1 };
 // 並び替え用の値（マイルは km に換算して比較）
 // 和暦（昭和・平成・令和）の年月を並び替え用の数値に（例：平成24年06月 → 201206）
@@ -379,19 +378,6 @@ $('#btn-delete').addEventListener('click', async () => {
   catch (err) { $('#form-error').textContent = err.message; }
 });
 $('#btn-add').addEventListener('click', () => openForm(null));
-
-const layoutBtn = $('#btn-layout');
-const updateLayoutBtn = () => {
-  layoutBtn.textContent = '表示切替';
-  layoutBtn.title = layoutKey === '1' ? '現在：1段（横長）→ 押すと2段に切替' : '現在：2段（縦型）→ 押すと1段に切替';
-};
-updateLayoutBtn();
-layoutBtn.addEventListener('click', () => {
-  layoutKey = layoutKey === '1' ? '2' : '1';
-  try { localStorage.setItem('zaiko-layout', layoutKey); } catch { /* 無視 */ }
-  updateLayoutBtn();
-  render({ total: state.items.length });
-});
 
 // 日付欄はクリックでカレンダーを開く
 function openPicker(input) {
