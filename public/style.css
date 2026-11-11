@@ -317,3 +317,25 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 .mk-tbl.own td { background: var(--sel); }
 .mk-tbl tr.mk-unsold td { color: var(--muted); }
 .mk-none { margin: 0; color: var(--muted); }
+/* ページ切り替えのタブ */
+.tabs-top { display: flex; gap: 2px; border-bottom: 2px solid var(--accent); margin: 8px 0 0; }
+.tabs-top a {
+  padding: 8px 18px; text-decoration: none; color: var(--text); background: var(--thead);
+  border: 1px solid var(--tline); border-bottom: 0; font-weight: 600;
+}
+.tabs-top a.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.tabs-top a:not(.on):hover { background: var(--hover); }
+/* AA結果 */
+.aa-filters label { display: flex; align-items: center; gap: 6px; font-size: .9rem; white-space: nowrap; }
+.aa-filters select { width: auto; border-radius: 0; }
+.aa-stat { font-size: .95rem; }
+.aa-tbl { border-collapse: separate; border-spacing: 0; width: 100%; font-size: .9rem; }
+.aa-tbl th, .aa-tbl td { border-right: 1px solid var(--tline); border-bottom: 1px solid var(--tline); padding: .35em .6em; white-space: nowrap; text-align: left; }
+.aa-tbl thead th { position: sticky; top: 0; background: var(--thead); cursor: pointer; z-index: 1; }
+.aa-tbl thead th .arrow { color: var(--muted); font-size: .75rem; }
+.aa-tbl tbody tr:nth-child(even) { background: var(--zebra); }
+.aa-tbl tbody tr:hover { background: var(--hover); }
+.aa-tbl td.r { text-align: right; font-variant-numeric: tabular-nums; } .aa-tbl td.c { text-align: center; } .aa-tbl td.b { font-weight: 700; }
+.aa-tbl td.w { white-space: normal; min-width: 10em; }
+.aa-tbl tr.aa-stock td { background: var(--sel); }
+.aa-tbl tr.aa-unsold td { color: var(--muted); }

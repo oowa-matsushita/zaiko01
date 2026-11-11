@@ -18,6 +18,7 @@ const ROUTES = [
   [/^\/api\/import\/?$/, importItems],
   [/^\/api\/market-import\/?$/, { onRequestPost: market.importRows }],
   [/^\/api\/market-counts\/?$/, { onRequestGet: market.counts }],
+  [/^\/api\/market-list\/?$/, { onRequestGet: market.list }],
   [/^\/api\/market\/(?<id>\d+)\/?$/, { onRequestGet: market.forItem }],
 ];
 const METHOD = { GET: 'onRequestGet', POST: 'onRequestPost', PUT: 'onRequestPut', PATCH: 'onRequestPatch', DELETE: 'onRequestDelete' };

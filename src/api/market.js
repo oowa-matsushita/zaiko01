@@ -52,6 +52,37 @@ export async function importRows({ request, env }) {
   return json({ dry_run: !!body.dry_run, total: rows.length, new: fresh.length, duplicate: rows.length - fresh.length });
 }
 
+// GET /api/market-list?q=&result=sold|unsold&from=&to=  AA結果の一覧
+export async function list({ request, env }) {
+  await ensureMarketTable(env.DB);
+  const p = new URL(request.url).searchParams;
+  const where = [], args = [];
+  const q = (p.get('q') || '').normalize('NFKC').trim();
+  if (q) {
+    for (const w of q.split(/\s+/)) {
+      const i = args.length + 1;
+      where.push(`(model_name LIKE ?${i} OR grade LIKE ?${i} OR type_code LIKE ?${i} OR serial LIKE ?${i} OR color LIKE ?${i} OR venue LIKE ?${i} OR lot_no = ?${i + 1} OR region LIKE ?${i})`);
+      args.push(`%${w}%`, w);
+    }
+  }
+  const r = p.get('result');
+  if (r === 'sold') where.push("result LIKE '%落札%'");
+  if (r === 'unsold') where.push("result NOT LIKE '%落札%'");
+  if (p.get('from')) { where.push(`auction_date >= ?${args.length + 1}`); args.push(p.get('from')); }
+  if (p.get('to')) { where.push(`auction_date <= ?${args.length + 1}`); args.push(p.get('to')); }
+  const w = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const rows = (await env.DB.prepare(`SELECT * FROM auction_results ${w} ORDER BY auction_date DESC, CAST(lot_no AS INTEGER) LIMIT 3000`).bind(...args).all()).results;
+  const dates = (await env.DB.prepare('SELECT DISTINCT auction_date FROM auction_results ORDER BY auction_date DESC').all()).results.map((x) => x.auction_date);
+  // 在庫にある車両（型式＋車台番号が一致）に印を付ける
+  const stock = new Set((await env.DB.prepare("SELECT chassis_no FROM items WHERE chassis_no IS NOT NULL AND chassis_no <> ''").all())
+    .results.map((x) => { const c = splitChassis(x.chassis_no); return `${c.type}|${c.serial}`; }));
+  for (const row of rows) {
+    const t = norm(row.type_code), sn = norm(row.serial);
+    row.in_stock = [...stock].some((k) => { const [st, ss] = k.split('|'); return ss === sn && t.startsWith(st); });
+  }
+  return json({ rows, dates });
+}
+
 export async function counts({ env }) {
   await ensureMarketTable(env.DB);
   const r = await env.DB.prepare('SELECT type_code, COUNT(*) AS n FROM auction_results GROUP BY type_code').all();
