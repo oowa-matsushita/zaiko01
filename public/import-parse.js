@@ -97,3 +97,42 @@ export function csvToItems(rows) {
     };
   });
 }
+
+// ---- オークション結果（相場）CSV ----
+// 見出しに「セリ結果」「応札額」があればオークション結果とみなす
+export function isAuctionCsv(rows) {
+  const head = (rows[0] || []).map((h) => nfkc(h).replace(/\s/g, ''));
+  return head.includes('セリ結果') || head.includes('応札額');
+}
+
+const AUC_HEAD = {
+  auction_date: ['開催日'], venue: ['会場'], lot_no: ['出品番号'], year: ['年式'], model_name: ['車種名'],
+  grade: ['グレード'], shift: ['シフト'], cc: ['排気量'], mileage_k: ['走行'], inspection: ['車検'], color: ['色'],
+  type_code: ['型式'], equipment: ['装備'], result: ['セリ結果'], region: ['落札地区'], price_k: ['応札額'],
+  start_k: ['スタート金額'], score: ['評価点'], serial: ['車台番号'], interior: ['内装評価点'],
+};
+const AUC_INT = new Set(['cc', 'mileage_k', 'price_k', 'start_k']);
+
+// 26/11/07 → 2026-11-07
+function aucDate(s) {
+  const m = nfkc(s).match(/^(\d{2,4})[/.-](\d{1,2})[/.-](\d{1,2})/);
+  if (!m) return nfkc(s);
+  const y = m[1].length === 2 ? 2000 + Number(m[1]) : Number(m[1]);
+  return `${y}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
+}
+
+export function auctionToRows(rows) {
+  const head = rows[0].map((h) => nfkc(h).replace(/\s/g, ''));
+  const idx = Object.fromEntries(Object.entries(AUC_HEAD).map(([k, names]) => [k, head.findIndex((h) => names.includes(h))]));
+  return rows.slice(1).map((r) => {
+    const o = {};
+    for (const [k, i] of Object.entries(idx)) {
+      let v = i >= 0 ? nfkc(r[i]).replace(/^="(.*)"$/, '$1') : '';
+      if (AUC_INT.has(k)) { const n = Number(v.replace(/[^\d-]/g, '')); v = v === '' || !Number.isFinite(n) ? null : n; }
+      o[k] = v;
+    }
+    o.auction_date = aucDate(o.auction_date);
+    o.type_code = String(o.type_code || '').toUpperCase().replace(/\s/g, '');
+    return o;
+  }).filter((o) => o.auction_date && o.lot_no);
+}

@@ -1,4 +1,4 @@
-import { decodeCsv, parseCsv, csvToItems } from '/import-parse.js';
+import { decodeCsv, parseCsv, csvToItems, isAuctionCsv, auctionToRows } from '/import-parse.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -33,6 +33,9 @@ async function readFile(file) {
   fileName = file.name;
   try {
     const rows = parseCsv(decodeCsv(await file.arrayBuffer()));
+    // オークション結果（相場）のCSVなら別の取り込みへ
+    if (isAuctionCsv(rows)) { await readAuction(rows); return; }
+    $('#auction-box').hidden = true;
     items = csvToItems(rows);
     if (!items.length) throw new Error('車両データがありません');
     // まず判定だけ（保存はしない）
@@ -127,3 +130,32 @@ fetch('/api/import').then((r) => r.json()).then(({ last_import: li }) => {
   const t = d.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' });
   $('#last-import').textContent = `前回の取り込み：${t}（追加 ${li.added} 台・更新 ${li.updated} 台${li.file ? '・' + li.file : ''}）`;
 }).catch(() => {});
+
+// ---- オークション結果（相場）の取り込み ----
+let auctionRows = [];
+async function readAuction(rows) {
+  auctionRows = auctionToRows(rows);
+  if (!auctionRows.length) throw new Error('オークション結果のデータがありません');
+  $('#preview').hidden = true;
+  const r = await api('/api/market-import', { rows: auctionRows, dry_run: true });
+  const dates = [...new Set(auctionRows.map((x) => x.auction_date))].sort();
+  $('#auction-box').hidden = false;
+  $('#auction-summary').innerHTML = `オークション結果のCSVです（${esc(fileName)}）<br>
+    全 <b>${r.total}</b> 件・開催日 ${esc(dates[0])} 〜 ${esc(dates[dates.length - 1])}<br>
+    <span class="pill st-new">新規 ${r.new} 件</span> <span class="pill st-skip">取り込み済み ${r.duplicate} 件</span>`;
+  $('#btn-auction').disabled = !r.new;
+  $('#btn-auction').textContent = r.new ? `相場データ ${r.new} 件を取り込む` : '新しい結果はありません';
+}
+$('#btn-auction').addEventListener('click', async () => {
+  const btn = $('#btn-auction');
+  btn.disabled = true;
+  btn.textContent = '取り込んでいます…';
+  try {
+    const r = await api('/api/market-import', { rows: auctionRows, file_name: fileName, dry_run: false });
+    $('#auction-summary').innerHTML = `✅ 相場データを <b>${r.new}</b> 件取り込みました（取り込み済み ${r.duplicate} 件はスキップ）。<a href="/">在庫一覧を見る</a>`;
+    btn.textContent = '取り込み完了';
+  } catch (e) {
+    toast(`取り込めませんでした：${e.message}`, true);
+    btn.disabled = false;
+  }
+});

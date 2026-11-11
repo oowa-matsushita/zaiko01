@@ -5,6 +5,7 @@ import * as stats from './api/stats.js';
 import * as dateCounts from './api/date_counts.js';
 import * as ocrPlate from './api/ocr_plate.js';
 import * as importItems from './api/import.js';
+import * as market from './api/market.js';
 import { json, ensureSchema } from './lib.js';
 import { isLoggedIn, handleLogin, handleLogout, loginPage } from './auth.js';
 
@@ -15,6 +16,9 @@ const ROUTES = [
   [/^\/api\/date-counts\/?$/, dateCounts],
   [/^\/api\/ocr-plate\/?$/, ocrPlate],
   [/^\/api\/import\/?$/, importItems],
+  [/^\/api\/market-import\/?$/, { onRequestPost: market.importRows }],
+  [/^\/api\/market-counts\/?$/, { onRequestGet: market.counts }],
+  [/^\/api\/market\/(?<id>\d+)\/?$/, { onRequestGet: market.forItem }],
 ];
 const METHOD = { GET: 'onRequestGet', POST: 'onRequestPost', PUT: 'onRequestPut', PATCH: 'onRequestPatch', DELETE: 'onRequestDelete' };
 

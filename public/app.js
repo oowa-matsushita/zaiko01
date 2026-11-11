@@ -236,6 +236,10 @@ const sortVal = (it, k) => k === 'mileage'
 const cellHtml = (it, k) => {
   switch (k) {
     case 'first_reg': return esc(shortWareki(it.first_reg));
+    case 'name': {
+      const n = marketCount(it);
+      return esc(it.name ?? '') + (n ? ` <span class="mk-badge" data-mk="${it.id}" title="相場を表示">相場${n}</span>` : '');
+    }
     case 'color': return esc(colorLabel(it.color));
     case 'mileage': return esc(fmtMileage(it) ?? '');
     case 'list_price': return it[k] ? esc(yen(withTax(it[k]))) : '';
@@ -565,7 +569,6 @@ $('#q-clear').addEventListener('click', () => {
   $('#q').focus();
 });
 
-load();
 
 // ---- 依頼する（メール / PDF） ----
 // 対象は表に表示中の車両（検索・日付の絞り込み・並び順をそのまま反映）
@@ -927,3 +930,93 @@ function showLastImport() {
   }).catch(() => {});
 }
 showLastImport();
+
+// ---- 相場（過去のオークション結果）をマウスオーバーで表示 ----
+let marketTypes = {};
+const marketCache = new Map();
+const chassisType = (c) => { const s = String(c || '').normalize('NFKC').toUpperCase().replace(/\s/g, ''); const i = s.indexOf('-'); return i > 0 ? s.slice(0, i) : ''; };
+function marketCount(it) {
+  const t = chassisType(it.chassis_no);
+  if (!t) return 0;
+  let n = 0;
+  for (const [k, v] of Object.entries(marketTypes)) if (k.startsWith(t)) n += v;
+  return n;
+}
+async function loadMarketCounts() {
+  try { marketTypes = (await api('/api/market-counts')).types || {}; } catch { marketTypes = {}; }
+}
+
+const man = (k) => (k == null ? '' : '¥' + (k * 1000).toLocaleString('ja-JP'));
+function marketHtml(it, d) {
+  if (!d.own.length && !d.similar.length) return `<p class="mk-none">型式 ${esc(d.type)} の相場データはありません</p>`;
+  const row = (r) => `<tr class="${/落札/.test(r.result || '') ? '' : 'mk-unsold'}">
+    <td>${esc(String(r.auction_date || '').slice(2).replaceAll('-', '/'))}</td><td>${esc(r.venue || '')}</td>
+    <td>${esc(r.year || '')}</td><td>${esc(r.model_name || '')}</td><td>${esc(r.grade || '')}</td>
+    <td class="r">${r.mileage_k != null ? r.mileage_k + '千km' : ''}</td><td>${esc(r.color || '')}</td>
+    <td class="c">${esc(r.score || '')}</td><td>${esc(r.result || '')}</td><td class="r b">${man(r.price_k)}</td></tr>`;
+  const head = '<tr><th>開催日</th><th>会場</th><th>年式</th><th>車種</th><th>グレード</th><th>走行</th><th>色</th><th>評価</th><th>結果</th><th>金額</th></tr>';
+  return `<div class="mk-title">📈 相場　型式 <b>${esc(d.type)}</b></div>
+    ${d.stat ? `<div class="mk-stat">似た車両の落札 <b>${d.stat.n}</b> 台：平均 <b>${man(d.stat.avg)}</b>（${man(d.stat.min)} 〜 ${man(d.stat.max)}）</div>` : ''}
+    ${d.own.length ? `<div class="mk-sub">この車両の過去の出品</div><table class="mk-tbl own">${head}${d.own.map(row).join('')}</table>` : ''}
+    ${d.similar.length ? `<div class="mk-sub">似た車両（年式・走行が近い順${d.similar_total > d.similar.length ? `／全 ${d.similar_total} 件中 ${d.similar.length} 件` : ''}）</div>
+      <table class="mk-tbl">${head}${d.similar.map(row).join('')}</table>` : ''}`;
+}
+
+const pop = document.createElement('div');
+pop.className = 'mk-pop';
+pop.hidden = true;
+document.body.appendChild(pop);
+let popTimer, popFor = null;
+async function showMarket(anchor, id) {
+  const it = state.items.find((i) => i.id == id);
+  if (!it) return;
+  popFor = id;
+  pop.innerHTML = '<p class="mk-none">読み込み中…</p>';
+  pop.hidden = false;
+  placePop(anchor);
+  try {
+    if (!marketCache.has(id)) marketCache.set(id, await api(`/api/market/${id}`));
+    if (popFor !== id) return;
+    pop.innerHTML = marketHtml(it, marketCache.get(id));
+    placePop(anchor);
+  } catch (e) {
+    pop.innerHTML = `<p class="mk-none">相場を読み込めませんでした：${esc(e.message)}</p>`;
+  }
+}
+function placePop(anchor) {
+  const r = anchor.getBoundingClientRect();
+  const w = Math.min(760, window.innerWidth - 16);
+  pop.style.width = w + 'px';
+  pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+  const below = r.bottom + 6, h = pop.offsetHeight;
+  pop.style.top = (below + h > window.innerHeight - 8 && r.top - h - 6 > 8 ? r.top - h - 6 : below) + 'px';
+}
+function hidePop() { pop.hidden = true; popFor = null; }
+// 車名の欄（相場バッジがある車両）にマウスを乗せると表示
+$('#tbl').addEventListener('mouseover', (e) => {
+  const td = e.target.closest('td[data-key="name"]');
+  const badge = td?.querySelector('.mk-badge');
+  if (!badge) return;
+  clearTimeout(popTimer);
+  popTimer = setTimeout(() => showMarket(td, badge.dataset.mk), 250);
+});
+$('#tbl').addEventListener('mouseout', (e) => {
+  const td = e.target.closest('td[data-key="name"]');
+  if (!td || td.contains(e.relatedTarget) || pop.contains(e.relatedTarget)) return;
+  clearTimeout(popTimer);
+  popTimer = setTimeout(hidePop, 200);
+});
+pop.addEventListener('mouseenter', () => clearTimeout(popTimer));
+pop.addEventListener('mouseleave', () => { popTimer = setTimeout(hidePop, 200); });
+// スマホ：相場バッジをタップで表示／もう一度タップで閉じる
+$('#tbl').addEventListener('click', (e) => {
+  const badge = e.target.closest('.mk-badge');
+  if (!badge) return;
+  e.stopPropagation();
+  if (popFor === badge.dataset.mk && !pop.hidden) hidePop(); else showMarket(badge.closest('td'), badge.dataset.mk);
+}, true);
+document.addEventListener('click', (e) => { if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.mk-badge')) hidePop(); });
+$('.table-wrap').addEventListener('scroll', hidePop);
+
+// 最初の表示：相場データの件数（型式ごと）を読み込んでから一覧を表示
+loadMarketCounts().finally(load);
