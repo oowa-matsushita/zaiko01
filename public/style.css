@@ -271,3 +271,15 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 #tbl tbody.vehicle.selected, #tbl tbody.vehicle.selected:hover,
 #tbl tbody.vehicle.selected td.fz, #tbl tbody.vehicle.selected:hover td.fz { background-color: var(--sel); }
 #tbl tbody.vehicle.selected td.rowno { box-shadow: inset 4px 0 0 var(--sel-line); }
+/* 会場の色：名古屋＝緑（金曜）、静岡＝橙（土曜） */
+:root { --nagoya: #d9f7e3; --nagoya-line: #16a34a; --shizuoka: #ffe6cc; --shizuoka-line: #ea7a0c; --mismatch: #fde2e2; }
+@media (prefers-color-scheme: dark) { :root { --nagoya: #163d24; --shizuoka: #4a2d0f; --mismatch: #4a1d1d; } }
+.date-box.v-nagoya:not([aria-pressed="true"]) { background: var(--nagoya); border-color: var(--nagoya-line); }
+.date-box.v-shizuoka:not([aria-pressed="true"]) { background: var(--shizuoka); border-color: var(--shizuoka-line); }
+.date-box .vtag { display: block; font-size: .65rem; font-weight: 700; }
+.date-box.v-nagoya .vtag { color: var(--nagoya-line); }
+.date-box.v-shizuoka .vtag { color: var(--shizuoka-line); }
+.date-box[aria-pressed="true"] .vtag { color: var(--accent-text); }
+#tbl td.v-nagoya { background-color: var(--nagoya) !important; }
+#tbl td.v-shizuoka { background-color: var(--shizuoka) !important; }
+#tbl td.v-mismatch { background-color: var(--mismatch) !important; color: var(--danger); font-weight: 700; }

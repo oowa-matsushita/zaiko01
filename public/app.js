@@ -49,6 +49,10 @@ const addDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * 864e5)
 const dow = (iso) => new Date(iso + 'T00:00:00Z').getUTCDay();
 const shortDate = (iso) => { const [, m, d] = iso.split('-').map(Number); return `${m}/${d}(${WD[dow(iso)]})`; };
 
+// 会場と開催曜日：名古屋＝金曜、静岡＝土曜
+const VENUE_DAY = { 5: '名古屋', 6: '静岡' };
+const VENUE_WEEKDAY = { 名古屋: 5, 静岡: 6 };
+const VENUE_CLASS = { 名古屋: 'nagoya', 静岡: 'shizuoka', 廃車: 'haisha' };
 // 開催日：今日から4週間の金曜・土曜
 function eventDates() {
   const t = jstToday(), out = [];
@@ -72,9 +76,11 @@ function renderDateGrid(counts) {
   const cols = [...new Set([...ev, ...sh, ...extra])].sort();
   const box = (field, d) => {
     const n = counts[field][d] || 0;
-    const cls = [n ? '' : 'zero', dow(d) === 6 ? 'sat' : dow(d) === 0 ? 'sun' : ''].join(' ');
+    // 開催日：金曜は名古屋、土曜は静岡の色を付ける
+    const venue = field === 'event_date' ? VENUE_DAY[dow(d)] : null;
+    const cls = [n ? '' : 'zero', dow(d) === 6 ? 'sat' : dow(d) === 0 ? 'sun' : '', venue ? `v-${VENUE_CLASS[venue]}` : ''].join(' ');
     return `<button type="button" class="date-box ${cls}" data-field="${field}" data-date="${d}" aria-pressed="${state[field] === d}">
-      <span class="d">${shortDate(d)}</span><span class="n">${n}<small>台</small></span></button>`;
+      <span class="d">${shortDate(d)}</span><span class="n">${n}<small>台</small></span>${venue ? `<span class="vtag">${venue}</span>` : ''}</button>`;
   };
   // 出庫日の枠の中に、その日の陸送会社ボタン（例：シンセイ① 2台）を並べる
   const carrierOrder = (c) => { const i = CARRIERS.indexOf(c); return i < 0 ? 99 : i; };
@@ -272,6 +278,17 @@ function renderHead() {
   updateStickyHead();
 }
 
+// 会場の色：会場の欄と、会場に合った曜日の開催日の欄に色を付ける（曜日が合わないときは警告色）
+function venueCellClass(it, k) {
+  const v = VENUE_CLASS[it.venue];
+  if (!v) return '';
+  if (k === 'venue') return `v-${v}`;
+  if (k === 'event_date' && it.event_date && VENUE_WEEKDAY[it.venue] != null) {
+    return dow(it.event_date) === VENUE_WEEKDAY[it.venue] ? `v-${v}` : 'v-mismatch';
+  }
+  return '';
+}
+
 function rowHtml(it) {
   const rows = layout();
   return rows.map((keys, r) => `<tr data-id="${it.id}"${r === rows.length - 1 ? ' class="last"' : ''}>${keys.map((e, i) => {
@@ -279,7 +296,7 @@ function rowHtml(it) {
     if (k === 'id') {
       return `<td class="rowno fz fz0"${rows.length > 1 ? ` rowspan="${rows.length}"` : ''}><button class="edit-btn" data-open="${it.id}" title="フォームで編集" aria-label="フォームで編集">✎</button>${it.id}</td>`;
     }
-    const cls = [COL[k].cls, EDITABLE.has(k) ? 'editable' : ''].filter(Boolean).join(' ') + fzClass(r, i);
+    const cls = [COL[k].cls, EDITABLE.has(k) ? 'editable' : '', venueCellClass(it, k)].filter(Boolean).join(' ') + fzClass(r, i);
     return `<td class="${cls}" data-key="${k}"${k === 'color' && it.color ? ` title="${esc(it.color)}"` : ''}${colspanAttr(span)}>${cellHtml(it, k)}</td>`;
   }).join('')}</tr>`).join('');
 }
@@ -425,6 +442,14 @@ function finishEdit(save) {
   done.then(() => {
     td.classList.remove('editing');
     td.innerHTML = cellHtml(item, key);
+    // 会場・開催日を変えたら、両方の欄の色を付け直す
+    if (key === 'venue' || key === 'event_date') {
+      td.closest('tbody').querySelectorAll('td[data-key="venue"], td[data-key="event_date"]').forEach((c) => {
+        c.classList.remove('v-nagoya', 'v-shizuoka', 'v-haisha', 'v-mismatch');
+        const v = venueCellClass(item, c.dataset.key);
+        if (v) c.classList.add(v);
+      });
+    }
   });
 }
 
