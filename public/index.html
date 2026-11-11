@@ -18,7 +18,12 @@
   </header>
 
   <section class="filters">
-    <input id="q" type="search" placeholder="車名・グレード・車台番号・色・陸送会社・メモなどで検索">
+    <div class="search-box">
+      <label for="q" class="search-label">🔍 検索</label>
+      <input id="q" type="search" autocomplete="off" placeholder="車名・グレード・車台番号（下4桁でも可）・色・陸送会社・メモ">
+      <button type="button" id="q-clear" class="search-clear" aria-label="検索をクリア" hidden>✕ クリア</button>
+    </div>
+    <p id="q-result" class="search-result" hidden></p>
     <!-- 開催日と出庫日を同じ日付の列にそろえて表示（横スクロール） -->
     <div class="date-scroll">
       <div id="f-dates" class="date-grid" role="group" aria-label="開催日・出庫日"></div>

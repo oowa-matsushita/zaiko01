@@ -309,6 +309,12 @@ const colCount = () => Math.max(...layout().map((r) => r.reduce((n, e) => n + sp
 
 function render({ total }) {
   $('#count').textContent = `${total} 台`;
+  const qr = $('#q-result');
+  qr.hidden = !state.q;
+  if (state.q) {
+    qr.textContent = total ? `「${state.q}」で ${total} 台見つかりました` : `「${state.q}」に当てはまる車両はありません`;
+    qr.classList.toggle('none', !total);
+  }
   for (const [k, id] of [['color', '#dl-color']]) {
     const vals = [...new Set(state.items.map((i) => i[k]).filter(Boolean))].sort();
     $(id).innerHTML = vals.map((v) => `<option value="${esc(v)}">`).join('');
@@ -538,9 +544,25 @@ $('#tbl').addEventListener('click', (e) => {
 });
 
 let timer;
+// 検索欄：入力中は枠を強調し、クリアボタンと「〇台見つかりました」を表示
+function updateSearchUi() {
+  const on = !!state.q;
+  $('.search-box').classList.toggle('active', on);
+  $('#q-clear').hidden = !$('#q').value;
+}
 $('#q').addEventListener('input', (e) => {
   clearTimeout(timer);
-  timer = setTimeout(() => { state.q = e.target.value.trim(); load(); }, 250);
+  $('#q-clear').hidden = !e.target.value;
+  // 全角の英数字も半角にして探す（例：２１４５ → 2145）
+  timer = setTimeout(() => { state.q = e.target.value.normalize('NFKC').trim(); updateSearchUi(); load(); }, 250);
+});
+$('#q').addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#q-clear').click(); });
+$('#q-clear').addEventListener('click', () => {
+  $('#q').value = '';
+  state.q = '';
+  updateSearchUi();
+  load();
+  $('#q').focus();
 });
 
 load();
