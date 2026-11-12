@@ -99,6 +99,13 @@ function westernYear(s) {
   return w ? Number(w[0]) : null;
 }
 
+// 中央値（偶数件のときは真ん中2つの平均）
+function median(list) {
+  const a = [...list].sort((x, y) => x - y);
+  const m = Math.floor(a.length / 2);
+  return a.length % 2 ? a[m] : Math.round((a[m - 1] + a[m]) / 2);
+}
+
 export async function forItem({ env, params }) {
   await ensureMarketTable(env.DB);
   const item = await env.DB.prepare('SELECT id, name, chassis_no, first_reg, mileage, mileage_unit FROM items WHERE id = ?1').bind(Number(params.id)).first();
@@ -121,7 +128,7 @@ export async function forItem({ env, params }) {
   others.sort((a, b) => dist(a) - dist(b) || (b.auction_date || '').localeCompare(a.auction_date || ''));
   const sold = others.filter((r) => /落札/.test(r.result || '') && r.price_k > 0).map((r) => r.price_k);
   const stat = sold.length ? {
-    n: sold.length, avg: Math.round(sold.reduce((a, b) => a + b, 0) / sold.length),
+    n: sold.length, avg: Math.round(sold.reduce((a, b) => a + b, 0) / sold.length), median: median(sold),
     min: Math.min(...sold), max: Math.max(...sold),
   } : null;
   return json({ type, own, similar: others.slice(0, 12), similar_total: others.length, stat });

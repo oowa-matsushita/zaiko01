@@ -956,7 +956,7 @@ function marketHtml(it, d) {
     <td class="c">${esc(r.score || '')}</td><td>${esc(r.result || '')}</td><td class="r b">${man(r.price_k)}</td></tr>`;
   const head = '<tr><th>開催日</th><th>会場</th><th>年式</th><th>車種</th><th>グレード</th><th>走行</th><th>色</th><th>評価</th><th>結果</th><th>金額</th></tr>';
   return `<div class="mk-title">📈 相場　型式 <b>${esc(d.type)}</b></div>
-    ${d.stat ? `<div class="mk-stat">似た車両の落札 <b>${d.stat.n}</b> 台：平均 <b>${man(d.stat.avg)}</b>（${man(d.stat.min)} 〜 ${man(d.stat.max)}）</div>` : ''}
+    ${d.stat ? `<div class="mk-stat">似た車両の落札 <b>${d.stat.n}</b> 台：中央値 <b>${man(d.stat.median)}</b>・平均 <b>${man(d.stat.avg)}</b>（${man(d.stat.min)} 〜 ${man(d.stat.max)}）</div>` : ''}
     ${d.own.length ? `<div class="mk-sub">この車両の過去の出品</div><table class="mk-tbl own">${head}${d.own.map(row).join('')}</table>` : ''}
     ${d.similar.length ? `<div class="mk-sub">似た車両（年式・走行が近い順${d.similar_total > d.similar.length ? `／全 ${d.similar_total} 件中 ${d.similar.length} 件` : ''}）</div>
       <table class="mk-tbl">${head}${d.similar.map(row).join('')}</table>` : ''}`;
