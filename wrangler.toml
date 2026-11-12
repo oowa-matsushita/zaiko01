@@ -17,7 +17,7 @@ run_worker_first = true
 [[d1_databases]]
 binding = "DB"
 database_name = "zaiko01-db"
-database_id = "764cdbe8-60d6-4980-b2ef-bd7dd30f9ebc"
+database_id = "3903c653-36c5-47d0-b92e-cbdb48334bd8"
 migrations_dir = "migrations"
 
 # コーションプレートの読み取りに使う Workers AI
