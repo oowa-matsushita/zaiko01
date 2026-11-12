@@ -53,6 +53,17 @@
     </div>
   </section>
 
+  <section class="backup-box">
+    <h2>バックアップ・移設</h2>
+    <p class="muted">在庫・AA結果をすべて1つのファイルに保存します。サイトの移設や、万一に備えた保管に使えます。</p>
+    <div class="row">
+      <a class="btn-like primary" href="/api/backup" download>⬇ 全データをダウンロード</a>
+      <label class="btn-like">⬆ バックアップから復元<input id="restore-file" type="file" accept=".json,application/json" hidden></label>
+    </div>
+    <p class="muted small">復元は、在庫が空のサイト（移設先）でだけ使えます。今のデータを上書きすることはありません。</p>
+    <p id="restore-msg" role="status"></p>
+  </section>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/upload.js" type="module"></script>
 </body>

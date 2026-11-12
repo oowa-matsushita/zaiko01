@@ -6,6 +6,7 @@ import * as dateCounts from './api/date_counts.js';
 import * as ocrPlate from './api/ocr_plate.js';
 import * as importItems from './api/import.js';
 import * as market from './api/market.js';
+import * as backup from './api/backup.js';
 import { json, ensureSchema } from './lib.js';
 import { isLoggedIn, handleLogin, handleLogout, loginPage } from './auth.js';
 
@@ -19,6 +20,8 @@ const ROUTES = [
   [/^\/api\/market-import\/?$/, { onRequestPost: market.importRows }],
   [/^\/api\/market-counts\/?$/, { onRequestGet: market.counts }],
   [/^\/api\/market-list\/?$/, { onRequestGet: market.list }],
+  [/^\/api\/backup\/?$/, { onRequestGet: backup.download }],
+  [/^\/api\/restore\/?$/, { onRequestPost: backup.restore }],
   [/^\/api\/market\/(?<id>\d+)\/?$/, { onRequestGet: market.forItem }],
 ];
 const METHOD = { GET: 'onRequestGet', POST: 'onRequestPost', PUT: 'onRequestPut', PATCH: 'onRequestPatch', DELETE: 'onRequestDelete' };

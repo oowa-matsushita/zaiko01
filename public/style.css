@@ -339,3 +339,9 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 .aa-tbl td.w { white-space: normal; min-width: 10em; }
 .aa-tbl tr.aa-stock td { background: var(--sel); }
 .aa-tbl tr.aa-unsold td { color: var(--muted); }
+.backup-box { margin-top: 28px; padding: 14px 16px; border: 1px solid var(--tline); }
+.backup-box h2 { font-size: 1rem; margin: 0 0 4px; }
+.backup-box p { margin: 4px 0 10px; }
+.btn-like { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid var(--line); background: var(--card); color: var(--text); text-decoration: none; cursor: pointer; font-size: .95rem; }
+.btn-like.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.small { font-size: .8rem; }

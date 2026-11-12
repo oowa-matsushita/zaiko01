@@ -159,3 +159,21 @@ $('#btn-auction').addEventListener('click', async () => {
     btn.disabled = false;
   }
 });
+
+// ---- バックアップから復元（移設先の空のサイトで使う） ----
+$('#restore-file').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  const msg = $('#restore-msg');
+  msg.textContent = '復元しています…';
+  try {
+    const text = await f.text();
+    const r = await fetch('/api/restore', { method: 'POST', headers: { 'content-type': 'application/json' }, body: text });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || `エラー (${r.status})`);
+    msg.innerHTML = `✅ 復元しました：在庫 ${d.restored.items} 台・AA結果 ${d.restored.auction_results} 件。<a href="/">在庫一覧を見る</a>`;
+  } catch (err) {
+    msg.textContent = `復元できませんでした：${err.message}`;
+  }
+});

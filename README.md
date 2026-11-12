@@ -69,3 +69,12 @@ npm run dev     # http://localhost:8787（.dev.vars に LOGIN_ID など3つを�
 | GET | `/api/stats` | 集計 |
 
 外部から使う場合は、Pages の環境変数に `API_TOKEN` を設定し、`Authorization: Bearer <API_TOKEN>` を付けて呼び出します（Access を使う場合はサービストークンの設定も必要）。
+
+## 別の Cloudflare / GitHub アカウントへの移設
+1. 今のサイトの「データをアップロード」→「バックアップ・移設」→「全データをダウンロード」でJSONを保存する
+2. GitHub：リポジトリを会社のアカウントへ移す（Settings → Transfer ownership。受け取り側でメール承認が必要）
+3. 会社の Cloudflare で D1 を作成（名前 `zaiko01-db`）し、表示されたデータベースIDを `wrangler.toml` の `database_id` に書き換える
+4. 会社の Cloudflare で「Workers & Pages → 作成 → GitHub からインポート」で会社のリポジトリを選ぶ（デプロイコマンド `npx wrangler deploy`）
+5. Worker の「設定 → 変数とシークレット」で `LOGIN_ID` / `LOGIN_PASSWORD` / `SESSION_SECRET` を登録する
+6. 新しいサイトにログインし、「データをアップロード」→「バックアップから復元」で手順1のJSONを読み込む（空のサイトにだけ復元できる）
+7. 動作を確認したら、古いアカウントの Worker と D1 を削除する

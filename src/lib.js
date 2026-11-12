@@ -41,6 +41,12 @@ const ADDED_COLUMNS = {
 let schemaReady = null;
 export function ensureSchema(db) {
   schemaReady ??= (async () => {
+    // 新しいデータベースでも自動でテーブルを作る（D1コンソールでの作業を不要にする）
+    await db.prepare(`CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, model_no TEXT,
+      category TEXT, condition_rank TEXT, quantity INTEGER NOT NULL DEFAULT 1, purchase_date TEXT, purchase_price INTEGER NOT NULL DEFAULT 0,
+      supplier TEXT, location TEXT, list_price INTEGER, status TEXT NOT NULL DEFAULT 'in_stock', sold_date TEXT, sold_price INTEGER,
+      fees INTEGER NOT NULL DEFAULT 0, notes TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')))`).run();
     const { results } = await db.prepare('PRAGMA table_info(items)').all();
     const have = new Set(results.map((r) => r.name));
     const adds = Object.entries(ADDED_COLUMNS).filter(([c]) => !have.has(c));
