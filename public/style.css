@@ -303,7 +303,7 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 /* 相場 */
 .mk-badge { display: inline-block; margin-left: 4px; padding: 0 5px; font-size: .7em; font-weight: 700; color: #fff; background: #7c3aed; cursor: help; vertical-align: 1px; }
 .mk-pop {
-  position: fixed; z-index: 50; max-height: 70vh; overflow: auto; padding: 10px 12px;
+  position: fixed; z-index: 50; max-height: calc(100vh - 16px); overflow: auto; overscroll-behavior: contain; padding: 10px 12px;
   background: var(--card); color: var(--text); border: 1px solid var(--tline); box-shadow: 0 10px 30px rgb(0 0 0 / .25); font-size: .85rem;
 }
 .mk-title { font-size: 1rem; margin-bottom: 4px; }
@@ -313,10 +313,19 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 .mk-tbl { border-collapse: collapse; width: 100%; }
 .mk-tbl th, .mk-tbl td { border: 1px solid var(--line); padding: 3px 6px; white-space: nowrap; text-align: left; }
 .mk-tbl th { background: var(--thead); font-weight: 600; }
+.mk-tbl td.w { white-space: normal; min-width: 4em; }
 .mk-tbl td.r { text-align: right; } .mk-tbl td.c { text-align: center; } .mk-tbl td.b { font-weight: 700; }
 .mk-tbl.own td { background: var(--sel); }
 .mk-tbl tr.mk-unsold td { color: var(--muted); }
 .mk-none { margin: 0; color: var(--muted); }
+/* スマホ：表をやめて1台ずつ折り返して表示（金額は右端・太字） */
+@media (max-width: 600px) {
+  .mk-tbl, .mk-tbl tbody { display: block; }
+  .mk-tbl tr:has(th) { display: none; }
+  .mk-tbl tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .7em; padding: 5px 4px; border-bottom: 1px solid var(--line); }
+  .mk-tbl th, .mk-tbl td { border: 0; padding: 0; white-space: normal; min-width: 0; }
+  .mk-tbl td.b { margin-left: auto; font-size: 1.1em; }
+}
 /* ページ切り替えのタブ */
 .tabs-top { display: flex; gap: 2px; border-bottom: 2px solid var(--accent); margin: 8px 0 0; }
 .tabs-top a {

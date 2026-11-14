@@ -949,12 +949,23 @@ async function loadMarketCounts() {
 const man = (k) => (k == null ? '' : '¥' + (k * 1000).toLocaleString('ja-JP'));
 function marketHtml(it, d) {
   if (!d.own.length && !d.similar.length) return `<p class="mk-none">型式 ${esc(d.type)} の相場データはありません</p>`;
-  const row = (r) => `<tr class="${/落札/.test(r.result || '') ? '' : 'mk-unsold'}">
-    <td>${esc(String(r.auction_date || '').slice(2).replaceAll('-', '/'))}</td><td>${esc(r.venue || '')}</td>
-    <td>${esc(r.year || '')}</td><td>${esc(r.model_name || '')}</td><td>${esc(r.grade || '')}</td>
-    <td class="r">${r.mileage_k != null ? r.mileage_k + '千km' : ''}</td><td>${esc(r.color || '')}</td>
-    <td class="c">${esc(r.score || '')}</td><td>${esc(r.result || '')}</td><td class="r b">${man(r.price_k)}</td></tr>`;
-  const head = '<tr><th>開催日</th><th>会場</th><th>年式</th><th>車種</th><th>グレード</th><th>走行</th><th>色</th><th>評価</th><th>結果</th><th>金額</th></tr>';
+  // 列：[見出し, 値を作る関数, セルのクラス]。全部の行で空の列は出さない（画面に収めるため）
+  const COLS = [
+    ['開催日', (r) => esc(String(r.auction_date || '').slice(2).replaceAll('-', '/')), ''],
+    ['会場', (r) => esc(r.venue || ''), ''],
+    ['年式', (r) => esc(r.year || ''), ''],
+    ['車種', (r) => esc(r.model_name || ''), 'w'],
+    ['グレード', (r) => esc(r.grade || ''), 'w'],
+    ['走行', (r) => (r.mileage_k != null ? r.mileage_k + '千km' : ''), 'r'],
+    ['色', (r) => esc(r.color || ''), 'w'],
+    ['評価', (r) => esc(r.score || ''), 'c'],
+    ['結果', (r) => esc(r.result || ''), ''],
+    ['金額', (r) => man(r.price_k), 'r b'],
+  ];
+  const all = [...d.own, ...d.similar];
+  const cols = COLS.filter(([, f]) => all.some((r) => f(r) !== ''));
+  const row = (r) => `<tr class="${/落札/.test(r.result || '') ? '' : 'mk-unsold'}">${cols.map(([, f, c]) => `<td class="${c}">${f(r)}</td>`).join('')}</tr>`;
+  const head = `<tr>${cols.map(([h]) => `<th>${h}</th>`).join('')}</tr>`;
   return `<div class="mk-title">📈 相場　型式 <b>${esc(d.type)}</b></div>
     ${d.stat ? `<div class="mk-stat">似た車両の落札 <b>${d.stat.n}</b> 台：中央値 <b>${man(d.stat.median)}</b>・平均 <b>${man(d.stat.avg)}</b>（${man(d.stat.min)} 〜 ${man(d.stat.max)}）</div>` : ''}
     ${d.own.length ? `<div class="mk-sub">この車両の過去の出品</div><table class="mk-tbl own">${head}${d.own.map(row).join('')}</table>` : ''}
@@ -985,11 +996,22 @@ async function showMarket(anchor, id) {
 }
 function placePop(anchor) {
   const r = anchor.getBoundingClientRect();
-  const w = Math.min(760, window.innerWidth - 16);
+  const vw = document.documentElement.clientWidth, vh = window.innerHeight, m = 8, gap = 6;
+  const w = Math.min(760, vw - m * 2);
   pop.style.width = w + 'px';
-  pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
-  const below = r.bottom + 6, h = pop.offsetHeight;
-  pop.style.top = (below + h > window.innerHeight - 8 && r.top - h - 6 > 8 ? r.top - h - 6 : below) + 'px';
+  pop.style.left = Math.max(m, Math.min(r.left, vw - w - m)) + 'px';
+  // 本来の高さを測ってから、下・上のうち収まる方（どちらも無理なら広い方）に出す
+  pop.style.maxHeight = 'none';
+  const h = pop.offsetHeight;
+  const below = vh - r.bottom - gap - m, above = r.top - gap - m;
+  let top, max;
+  if (h <= below) { top = r.bottom + gap; max = below; }
+  else if (h <= above) { top = r.top - gap - h; max = above; }
+  else if (Math.max(below, above) >= 240) {
+    if (below >= above) { top = r.bottom + gap; max = below; } else { max = above; top = m; }
+  } else { top = m; max = vh - m * 2; } // 上下とも狭いときは画面全体を使う
+  pop.style.maxHeight = max + 'px';
+  pop.style.top = Math.max(m, top) + 'px';
 }
 function hidePop() { pop.hidden = true; popFor = null; }
 // 車名の欄（相場バッジがある車両）にマウスを乗せると表示
