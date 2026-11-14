@@ -23,9 +23,10 @@ export const authConfigured = (env) =>
 
 // Claude 用トークンの確認（未設定・32文字未満なら常に不可）
 export async function tokenOk(env, token) {
-  const t = env.API_TOKEN;
-  if (!t || t.length < 32 || !env.SESSION_SECRET) return false;
-  return safeEqual(env.SESSION_SECRET, String(token || ''), t);
+  // 貼り付けで入りがちな前後の空白・改行は無視する
+  const t = String(env.API_TOKEN || '').trim();
+  if (t.length < 32 || !env.SESSION_SECRET) return false;
+  return safeEqual(env.SESSION_SECRET, String(token || '').trim(), t);
 }
 
 async function hmac(secret, data) {
