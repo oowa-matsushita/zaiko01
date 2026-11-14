@@ -26,6 +26,47 @@ function splitChassis(c) {
   return i < 0 ? { type: s.replace(/\d{5,}$/, ''), serial: (s.match(/\d{5,}$/) || [''])[0] } : { type: s.slice(0, i), serial: s.slice(i + 1) };
 }
 
+const insertStmt = (db, r) => db.prepare(
+  `INSERT OR IGNORE INTO auction_results (${COLS.join(', ')}) VALUES (${COLS.map((_, i) => `?${i + 1}`).join(', ')})`
+).bind(...COLS.map((c) => (r[c] === '' || r[c] === undefined ? null : r[c])));
+
+// first に渡した文（全削除など）は最初のまとまりと一緒に実行する
+async function insertRows(db, rows, first = []) {
+  const stmts = [...first, ...rows.map((r) => insertStmt(db, r))];
+  for (let i = 0; i < stmts.length; i += 100) await db.batch(stmts.slice(i, i + 100));
+}
+
+// 行の形と中身の確認（Claude から送られたデータ用）
+function checkRows(rows) {
+  if (!Array.isArray(rows) || !rows.length) return 'データがありません';
+  if (rows.length > 5000) return '一度に送れるのは5000件までです';
+  const bad = rows.findIndex((r) => !r || typeof r !== 'object' || !/^\d{4}-\d{2}-\d{2}$/.test(r.auction_date || '') || !r.venue || !r.lot_no);
+  if (bad >= 0) return `${bad + 1} 件目：開催日（YYYY-MM-DD）・会場・出品番号は必須です`;
+  return '';
+}
+
+// POST /api/market-replace  { rows, dry_run }  相場データを全部消して入れ直す（Claude 用）
+export async function replaceAll({ request, env }) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: 'JSONを送ってください' }, 400); }
+  const err = checkRows(body.rows);
+  if (err) return json({ error: err }, 400);
+  await ensureMarketTable(env.DB);
+  const seen = new Set();
+  const rows = body.rows.filter((r) => { const k = `${r.auction_date}|${r.venue}|${r.lot_no}`; return !seen.has(k) && seen.add(k); });
+  const before = (await env.DB.prepare('SELECT COUNT(*) AS n FROM auction_results').first()).n;
+  if (!body.dry_run) await insertRows(env.DB, rows, [env.DB.prepare('DELETE FROM auction_results')]);
+  return json({ dry_run: !!body.dry_run, deleted: before, inserted: rows.length, duplicate: body.rows.length - rows.length });
+}
+
+// GET /api/market-summary  件数・期間・会場別件数（Claude の確認用）
+export async function summary({ env }) {
+  await ensureMarketTable(env.DB);
+  const all = await env.DB.prepare('SELECT COUNT(*) AS n, MIN(auction_date) AS first, MAX(auction_date) AS last, SUM(year IS NOT NULL) AS with_year FROM auction_results').first();
+  const venues = (await env.DB.prepare('SELECT venue, COUNT(*) AS n FROM auction_results GROUP BY venue ORDER BY n DESC').all()).results;
+  return json({ ...all, venues });
+}
+
 export async function importRows({ request, env }) {
   let body;
   try { body = await request.json(); } catch { return json({ error: 'JSONを送ってください' }, 400); }
@@ -43,12 +84,7 @@ export async function importRows({ request, env }) {
     seen.add(key);
     fresh.push(r);
   }
-  if (!body.dry_run && fresh.length) {
-    const stmts = fresh.map((r) => env.DB.prepare(
-      `INSERT OR IGNORE INTO auction_results (${COLS.join(', ')}) VALUES (${COLS.map((_, i) => `?${i + 1}`).join(', ')})`
-    ).bind(...COLS.map((c) => (r[c] === '' || r[c] === undefined ? null : r[c]))));
-    for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
-  }
+  if (!body.dry_run && fresh.length) await insertRows(env.DB, fresh);
   return json({ dry_run: !!body.dry_run, total: rows.length, new: fresh.length, duplicate: rows.length - fresh.length });
 }
 

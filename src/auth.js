@@ -3,6 +3,7 @@
 //   LOGIN_ID        ログインID
 //   LOGIN_PASSWORD  パスワード（6文字以上）
 //   SESSION_SECRET  ログイン状態の署名用のランダムな長い文字列（32文字以上）
+//   API_TOKEN       （任意）Claude が相場データを入れ替えるための合言葉（32文字以上）
 import { json } from './lib.js';
 
 const COOKIE = 'zaiko_session';
@@ -19,6 +20,13 @@ const fromB64url = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g
 export const authConfigured = (env) =>
   !!(env.LOGIN_ID && env.LOGIN_PASSWORD && env.LOGIN_PASSWORD.length >= MIN_PASSWORD
     && env.SESSION_SECRET && env.SESSION_SECRET.length >= 32);
+
+// Claude 用トークンの確認（未設定・32文字未満なら常に不可）
+export async function tokenOk(env, token) {
+  const t = env.API_TOKEN;
+  if (!t || t.length < 32 || !env.SESSION_SECRET) return false;
+  return safeEqual(env.SESSION_SECRET, String(token || ''), t);
+}
 
 async function hmac(secret, data) {
   const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);

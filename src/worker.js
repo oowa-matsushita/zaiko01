@@ -8,7 +8,7 @@ import * as importItems from './api/import.js';
 import * as market from './api/market.js';
 import * as backup from './api/backup.js';
 import { json, ensureSchema } from './lib.js';
-import { isLoggedIn, handleLogin, handleLogout, loginPage } from './auth.js';
+import { isLoggedIn, handleLogin, handleLogout, loginPage, tokenOk } from './auth.js';
 
 const ROUTES = [
   [/^\/api\/items\/?$/, items],
@@ -20,10 +20,14 @@ const ROUTES = [
   [/^\/api\/market-import\/?$/, { onRequestPost: market.importRows }],
   [/^\/api\/market-counts\/?$/, { onRequestGet: market.counts }],
   [/^\/api\/market-list\/?$/, { onRequestGet: market.list }],
+  [/^\/api\/market-replace\/?$/, { onRequestPost: market.replaceAll }],
+  [/^\/api\/market-summary\/?$/, { onRequestGet: market.summary }],
   [/^\/api\/backup\/?$/, { onRequestGet: backup.download }],
   [/^\/api\/restore\/?$/, { onRequestPost: backup.restore }],
   [/^\/api\/market\/(?<id>\d+)\/?$/, { onRequestGet: market.forItem }],
 ];
+// トークン（Claude 用）で使える API
+const TOKEN_PATHS = /^\/api\/market-(import|replace|summary|list|counts)\/?$/;
 const METHOD = { GET: 'onRequestGet', POST: 'onRequestPost', PUT: 'onRequestPut', PATCH: 'onRequestPatch', DELETE: 'onRequestDelete' };
 
 export default {
@@ -39,10 +43,15 @@ export default {
     }
     if (pathname === '/logout') return handleLogout();
 
-    // 外部ツール (Claude など) 用: API_TOKEN を設定した場合は Bearer トークンでも API を利用可
+    // Claude 用：シークレット API_TOKEN（32文字以上）を「Authorization: Bearer ...」で送ると、
+    // 相場データ（AA結果）の API だけ使える。在庫の変更・バックアップ・復元には使えない
     const auth = request.headers.get('authorization') || '';
-    const bearerOk = !!env.API_TOKEN && auth === `Bearer ${env.API_TOKEN}` && pathname.startsWith('/api/');
-    if (auth.startsWith('Bearer ') && !bearerOk) return json({ error: 'トークンが正しくありません' }, 401);
+    let bearerOk = false;
+    if (auth.startsWith('Bearer ')) {
+      if (!TOKEN_PATHS.test(pathname)) return json({ error: 'この操作はトークンでは使えません' }, 403);
+      bearerOk = await tokenOk(env, auth.slice(7));
+      if (!bearerOk) return json({ error: 'トークンが正しくありません' }, 401);
+    }
 
     if (!bearerOk && !(await isLoggedIn(request, env))) {
       if (pathname.startsWith('/api/')) return json({ error: 'ログインしてください', login: true }, 401);
