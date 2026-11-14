@@ -238,7 +238,7 @@ const cellHtml = (it, k) => {
     case 'first_reg': return esc(shortWareki(it.first_reg));
     case 'name': {
       const n = marketCount(it);
-      return esc(it.name ?? '') + (n ? ` <span class="mk-badge" data-mk="${it.id}" title="相場を表示">相場${n}</span>` : '');
+      return esc(it.name ?? '') + (n ? ` <span class="mk-badge" data-mk="${it.id}" title="実績を表示">実績${n}</span>` : '');
     }
     case 'color': return esc(colorLabel(it.color));
     case 'mileage': return esc(fmtMileage(it) ?? '');
@@ -931,7 +931,7 @@ function showLastImport() {
 }
 showLastImport();
 
-// ---- 相場（過去のオークション結果）をマウスオーバーで表示 ----
+// ---- 実績（過去のオークション結果）をマウスオーバーで表示 ----
 let marketTypes = {};
 const marketCache = new Map();
 const chassisType = (c) => { const s = String(c || '').normalize('NFKC').toUpperCase().replace(/\s/g, ''); const i = s.indexOf('-'); return i > 0 ? s.slice(0, i) : ''; };
@@ -947,30 +947,51 @@ async function loadMarketCounts() {
 }
 
 const man = (k) => (k == null ? '' : '¥' + (k * 1000).toLocaleString('ja-JP'));
+// 列：[キー, 見出し, 表示, 並べ替えの値, セルのクラス]。全部の行で空の列は出さない（画面に収めるため）
+const MK_COLS = [
+  ['date', '開催日', (r) => esc(String(r.auction_date || '').slice(2).replaceAll('-', '/')), (r) => r.auction_date || '', ''],
+  ['venue', '会場', (r) => esc(r.venue || ''), (r) => r.venue || '', ''],
+  ['year', '年式', (r) => esc(r.year || ''), (r) => r.west_year, ''],
+  ['name', '車種', (r) => esc(r.model_name || ''), (r) => r.model_name || '', 'w'],
+  ['grade', 'グレード', (r) => esc(r.grade || ''), (r) => r.grade || '', 'w'],
+  ['km', '走行', (r) => (r.mileage_k != null ? r.mileage_k + '千km' : ''), (r) => r.mileage_k, 'r'],
+  ['color', '色', (r) => esc(r.color || ''), (r) => r.color || '', 'w'],
+  ['score', '評価', (r) => esc(r.score || ''), (r) => r.score || '', 'c'],
+  ['result', '結果', (r) => esc(r.result || ''), (r) => r.result || '', ''],
+  ['price', '金額', (r) => man(r.price_k), (r) => r.price_k, 'r b'],
+];
+// 並べ替えの状態（表ごと）。まだ見出しを押していない表は、もとの順（似ている順）のまま
+let mkSort = { own: null, sim: null };
+let mkCur = null; // 表示中の { it, d }
+function sortedRows(list, sort) {
+  if (!sort) return list;
+  const col = MK_COLS.find((c) => c[0] === sort.key);
+  if (!col) return list;
+  const val = col[3], dir = sort.dir === 'desc' ? -1 : 1;
+  // 空の値は昇順・降順どちらでも最後に置く
+  return [...list].sort((x, y) => {
+    const a = val(x), b = val(y), ea = a == null || a === '', eb = b == null || b === '';
+    if (ea || eb) return ea === eb ? 0 : ea ? 1 : -1;
+    return (typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b), 'ja')) * dir;
+  });
+}
 function marketHtml(it, d) {
-  if (!d.own.length && !d.similar.length) return `<p class="mk-none">型式 ${esc(d.type)} の相場データはありません</p>`;
-  // 列：[見出し, 値を作る関数, セルのクラス]。全部の行で空の列は出さない（画面に収めるため）
-  const COLS = [
-    ['開催日', (r) => esc(String(r.auction_date || '').slice(2).replaceAll('-', '/')), ''],
-    ['会場', (r) => esc(r.venue || ''), ''],
-    ['年式', (r) => esc(r.year || ''), ''],
-    ['車種', (r) => esc(r.model_name || ''), 'w'],
-    ['グレード', (r) => esc(r.grade || ''), 'w'],
-    ['走行', (r) => (r.mileage_k != null ? r.mileage_k + '千km' : ''), 'r'],
-    ['色', (r) => esc(r.color || ''), 'w'],
-    ['評価', (r) => esc(r.score || ''), 'c'],
-    ['結果', (r) => esc(r.result || ''), ''],
-    ['金額', (r) => man(r.price_k), 'r b'],
-  ];
+  if (!d.own.length && !d.similar.length) return `<p class="mk-none">型式 ${esc(d.type)} の実績データはありません</p>`;
   const all = [...d.own, ...d.similar];
-  const cols = COLS.filter(([, f]) => all.some((r) => f(r) !== ''));
-  const row = (r) => `<tr class="${/落札/.test(r.result || '') ? '' : 'mk-unsold'}">${cols.map(([, f, c]) => `<td class="${c}">${f(r)}</td>`).join('')}</tr>`;
-  const head = `<tr>${cols.map(([h]) => `<th>${h}</th>`).join('')}</tr>`;
-  return `<div class="mk-title">📈 相場　型式 <b>${esc(d.type)}</b></div>
+  const cols = MK_COLS.filter((c) => all.some((r) => c[2](r) !== ''));
+  const row = (r) => `<tr class="${/落札/.test(r.result || '') ? '' : 'mk-unsold'}">${cols.map((c) => `<td class="${c[4]}">${c[2](r)}</td>`).join('')}</tr>`;
+  const table = (t, list, cls) => {
+    const sort = mkSort[t];
+    const head = `<tr>${cols.map((c) => {
+      const on = sort?.key === c[0];
+      return `<th class="mk-sort" data-t="${t}" data-k="${c[0]}" title="押すと並べ替え" aria-sort="${on ? (sort.dir === 'desc' ? 'descending' : 'ascending') : 'none'}">${c[1]}${on ? (sort.dir === 'desc' ? ' ▼' : ' ▲') : ''}</th>`;
+    }).join('')}</tr>`;
+    return `<table class="mk-tbl ${cls}">${head}${sortedRows(list, sort).map(row).join('')}</table>`;
+  };
+  return `<div class="mk-title">📈 実績　型式 <b>${esc(d.type)}</b></div>
     ${d.stat ? `<div class="mk-stat">似た車両の落札 <b>${d.stat.n}</b> 台：中央値 <b>${man(d.stat.median)}</b>・平均 <b>${man(d.stat.avg)}</b>（${man(d.stat.min)} 〜 ${man(d.stat.max)}）</div>` : ''}
-    ${d.own.length ? `<div class="mk-sub">この車両の過去の出品</div><table class="mk-tbl own">${head}${d.own.map(row).join('')}</table>` : ''}
-    ${d.similar.length ? `<div class="mk-sub">似た車両（年式・走行が近い順${d.similar_total > d.similar.length ? `／全 ${d.similar_total} 件中 ${d.similar.length} 件` : ''}）</div>
-      <table class="mk-tbl">${head}${d.similar.map(row).join('')}</table>` : ''}`;
+    ${d.own.length ? `<div class="mk-sub">この車両の過去の出品</div>${table('own', d.own, 'own')}` : ''}
+    ${d.similar.length ? `<div class="mk-sub">似た車両（年式・走行が近い順${d.similar_total > d.similar.length ? `／全 ${d.similar_total} 件中 ${d.similar.length} 件` : ''}）</div>${table('sim', d.similar, '')}` : ''}`;
 }
 
 const pop = document.createElement('div');
@@ -981,6 +1002,7 @@ let popTimer, popFor = null;
 async function showMarket(anchor, id) {
   const it = state.items.find((i) => i.id == id);
   if (!it) return;
+  if (popFor !== id) mkSort = { own: null, sim: null }; // 別の車両を開いたら並べ替えを戻す
   popFor = id;
   pop.innerHTML = '<p class="mk-none">読み込み中…</p>';
   pop.hidden = false;
@@ -988,10 +1010,11 @@ async function showMarket(anchor, id) {
   try {
     if (!marketCache.has(id)) marketCache.set(id, await api(`/api/market/${id}`));
     if (popFor !== id) return;
-    pop.innerHTML = marketHtml(it, marketCache.get(id));
+    mkCur = { it, d: marketCache.get(id) };
+    pop.innerHTML = marketHtml(it, mkCur.d);
     placePop(anchor);
   } catch (e) {
-    pop.innerHTML = `<p class="mk-none">相場を読み込めませんでした：${esc(e.message)}</p>`;
+    pop.innerHTML = `<p class="mk-none">実績を読み込めませんでした：${esc(e.message)}</p>`;
   }
 }
 function placePop(anchor) {
@@ -1013,8 +1036,19 @@ function placePop(anchor) {
   pop.style.maxHeight = max + 'px';
   pop.style.top = Math.max(m, top) + 'px';
 }
+// 見出しを押すと昇順→降順→昇順…と切り替わる（表ごと）
+pop.addEventListener('click', (e) => {
+  const th = e.target.closest('th.mk-sort');
+  if (!th || !mkCur) return;
+  e.stopPropagation(); // 表を作り直すと押した見出しが消え、「外をクリックした」と誤判定して閉じてしまうため
+  const t = th.dataset.t, k = th.dataset.k, cur = mkSort[t];
+  mkSort[t] = { key: k, dir: cur?.key === k && cur.dir === 'asc' ? 'desc' : 'asc' };
+  const top = pop.scrollTop;
+  pop.innerHTML = marketHtml(mkCur.it, mkCur.d);
+  pop.scrollTop = top;
+});
 function hidePop() { pop.hidden = true; popFor = null; }
-// 車名の欄（相場バッジがある車両）にマウスを乗せると表示
+// 車名の欄（実績バッジがある車両）にマウスを乗せると表示
 $('#tbl').addEventListener('mouseover', (e) => {
   const td = e.target.closest('td[data-key="name"]');
   const badge = td?.querySelector('.mk-badge');
@@ -1030,7 +1064,7 @@ $('#tbl').addEventListener('mouseout', (e) => {
 });
 pop.addEventListener('mouseenter', () => clearTimeout(popTimer));
 pop.addEventListener('mouseleave', () => { popTimer = setTimeout(hidePop, 200); });
-// スマホ：相場バッジをタップで表示／もう一度タップで閉じる
+// スマホ：実績バッジをタップで表示／もう一度タップで閉じる
 $('#tbl').addEventListener('click', (e) => {
   const badge = e.target.closest('.mk-badge');
   if (!badge) return;

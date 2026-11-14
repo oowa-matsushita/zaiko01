@@ -313,6 +313,8 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 .mk-tbl { border-collapse: collapse; width: 100%; }
 .mk-tbl th, .mk-tbl td { border: 1px solid var(--line); padding: 3px 6px; white-space: nowrap; text-align: left; }
 .mk-tbl th { background: var(--thead); font-weight: 600; }
+.mk-tbl th.mk-sort { cursor: pointer; user-select: none; }
+.mk-tbl th.mk-sort:hover { background: var(--sel); }
 .mk-tbl td.w { white-space: normal; min-width: 4em; }
 .mk-tbl td.r { text-align: right; } .mk-tbl td.c { text-align: center; } .mk-tbl td.b { font-weight: 700; }
 .mk-tbl.own td { background: var(--sel); }
@@ -321,7 +323,8 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 /* スマホ：表をやめて1台ずつ折り返して表示（金額は右端・太字） */
 @media (max-width: 600px) {
   .mk-tbl, .mk-tbl tbody { display: block; }
-  .mk-tbl tr:has(th) { display: none; }
+  .mk-tbl tr:has(th) { gap: 4px; padding: 6px 4px; border-bottom: 0; }
+  .mk-tbl th.mk-sort { border: 1px solid var(--line); padding: 3px 8px; font-size: .85em; }
   .mk-tbl tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 .7em; padding: 5px 4px; border-bottom: 1px solid var(--line); }
   .mk-tbl th, .mk-tbl td { border: 0; padding: 0; white-space: normal; min-width: 0; }
   .mk-tbl td.b { margin-left: auto; font-size: 1.1em; }
