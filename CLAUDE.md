@@ -28,6 +28,8 @@
 - 本番の Worker のシークレット `API_TOKEN`（32文字以上）と同じ値を、クラウド環境のネットワーク秘密情報（ホスト `zaiko01.oowa-matsushita.workers.dev`）に登録してある前提。トークンで使えるのは `/api/market-*` だけ（在庫・バックアップ・復元は不可）
 - 社内システムの契約書CSV（Shift-JIS）は顧客名が「USS静岡」→静岡、「ジェイボーイ」「USS名古屋」→名古屋 の行だけを相場に使う。日付＝開催日、伝票No＝出品番号、車輛本体価格÷1000＝応札額（千円）、初度＝年式（H28/10 形式）、型式は先頭の「DBA-」等を外す。結果はすべて「落札」。顧客名は相場に入れない
 - AA結果形式の CSV に変換したら `node scripts/market-upload.mjs <CSV>` で確認、`--apply` で入れ替え。先に利用者へ件数を見せて了承を得る
+- クラウド環境では Node の通信をプロキシ経由にしないと合言葉が付かない：`NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt API_TOKEN=proxy-injected node scripts/market-upload.mjs ...`
+- 合言葉を入れ直すときは、Cloudflare の `API_TOKEN` と、Claude 環境のネットワーク秘密情報（`request_credential`）の両方を同じ値にする。前後に空白・改行を入れない
 
 ## ローカル確認
 `.dev.vars` に3つのシークレットを書き、`[ai]` を外した設定で `npx wrangler dev` を動かして Playwright で画面確認している
