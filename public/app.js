@@ -26,11 +26,12 @@ const mdDate = (d) => {
   const thisYear = new Date(Date.now() + 9 * 3600e3).getUTCFullYear();
   return `${y !== thisYear ? y + '年' : ''}${m}月${day}日`;
 };
-const state = { q: '', event_date: '', shipped_date: '', beforeShip: true, own: '', carrier: '', items: [] };
+const state = { q: '', event_date: '', shipped_date: '', beforeShip: true, own: '', venue: '', carrier: '', items: [] };
 try {
   // 出庫前のみ表示は既定でオン（自分でオフにした場合だけオフのまま）
   state.beforeShip = localStorage.getItem('zaiko-before-ship-v2') !== '0';
-  state.own = localStorage.getItem('zaiko-own') || '';
+  state.own = localStorage.getItem('zaiko-own') === 'done' ? 'done' : ''; // 以前の「自社名待ち」の保存は無効
+  state.venue = ['名古屋', '静岡'].includes(localStorage.getItem('zaiko-venue')) ? localStorage.getItem('zaiko-venue') : '';
   state.carrier = localStorage.getItem('zaiko-carrier') || '';
 } catch { /* 既定はオフ */ }
 
@@ -133,6 +134,7 @@ async function load() {
   if (state.shipped_date) p.set('shipped_date', state.shipped_date);
   if (state.beforeShip) p.set('before_ship', jstToday());
   if (state.own) p.set('own', state.own);
+  if (state.venue) p.set('venue', state.venue);
   if (state.carrier) p.set('carrier', state.carrier);
   loadDateCounts();
   try {
@@ -325,7 +327,7 @@ function render({ total }) {
   }
   renderHead();
   if (!state.items.length) {
-    setBody(`<tbody><tr><td class="empty" colspan="${colCount()}">${state.q || state.event_date || state.shipped_date || state.beforeShip || state.own || state.carrier ? '該当する車両がありません' : 'まだ登録がありません。「＋ 買取登録」から追加してください'}</td></tr></tbody>`);
+    setBody(`<tbody><tr><td class="empty" colspan="${colCount()}">${state.q || state.event_date || state.shipped_date || state.beforeShip || state.own || state.venue || state.carrier ? '該当する車両がありません' : 'まだ登録がありません。「＋ 買取登録」から追加してください'}</td></tr></tbody>`);
     return;
   }
   const rows = sortedItems();
@@ -851,8 +853,7 @@ beforeBtn.addEventListener('click', () => {
   load();
 });
 
-// ---- 自社名済のみ／自社名待ち（自社名の日付が入っているか） ----
-// どちらか一方だけ選べる。もう一度押すと解除
+// ---- 自社名済（自社名の日付が入っている車両だけ）。もう一度押すと解除 ----
 const ownBtns = document.querySelectorAll('[data-own]');
 const updateOwnBtns = () => ownBtns.forEach((b) => b.setAttribute('aria-pressed', String(state.own === b.dataset.own)));
 updateOwnBtns();
@@ -908,6 +909,17 @@ function updateScrollHints() {
 let fitTimer;
 window.addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitTable, 150); });
 
+// ---- 会場（名古屋／静岡）で絞り込み ----
+const venueSel = $('#f-venue');
+venueSel.value = state.venue;
+venueSel.classList.toggle('active', !!state.venue);
+venueSel.addEventListener('change', () => {
+  state.venue = venueSel.value;
+  venueSel.classList.toggle('active', !!state.venue);
+  try { localStorage.setItem('zaiko-venue', state.venue); } catch { /* 無視 */ }
+  load();
+});
+
 // ---- 陸送会社で絞り込み ----
 const carrierSel = $('#f-carrier');
 carrierSel.value = state.carrier;
@@ -947,11 +959,20 @@ async function loadMarketCounts() {
 }
 
 const man = (k) => (k == null ? '' : '¥' + (k * 1000).toLocaleString('ja-JP'));
+// 年式（H28/10・平成28年10月・2016）→ 年×100＋月（新しいほど大きい）。読めなければ null
+function yearKey(r) {
+  const t = String(r.year || '').normalize('NFKC').toUpperCase().replace(/\s/g, '');
+  let y = null, mo = 0, m;
+  if ((m = t.match(/^([SHR])(\d{1,2})(?:\D+(\d{1,2}))?/))) { y = { S: 1925, H: 1988, R: 2018 }[m[1]] + Number(m[2]); mo = Number(m[3] || 0); }
+  else if ((m = t.match(/^(昭和|平成|令和)(\d+|元)年?(?:(\d{1,2})月?)?/))) { y = { 昭和: 1925, 平成: 1988, 令和: 2018 }[m[1]] + (m[2] === '元' ? 1 : Number(m[2])); mo = Number(m[3] || 0); }
+  else if ((m = t.match(/^((?:19|20)\d{2})(?:\D+(\d{1,2}))?/))) { y = Number(m[1]); mo = Number(m[2] || 0); }
+  return y == null ? (r.west_year ? r.west_year * 100 : null) : y * 100 + mo;
+}
 // 列：[キー, 見出し, 表示, 並べ替えの値, セルのクラス]。全部の行で空の列は出さない（画面に収めるため）
 const MK_COLS = [
   ['date', '開催日', (r) => esc(String(r.auction_date || '').slice(2).replaceAll('-', '/')), (r) => r.auction_date || '', ''],
   ['venue', '会場', (r) => esc(r.venue || ''), (r) => r.venue || '', ''],
-  ['year', '年式', (r) => esc(r.year || ''), (r) => r.west_year, ''],
+  ['year', '年式', (r) => esc(r.year || ''), yearKey, ''],
   ['name', '車種', (r) => esc(r.model_name || ''), (r) => r.model_name || '', 'w'],
   ['grade', 'グレード', (r) => esc(r.grade || ''), (r) => r.grade || '', 'w'],
   ['km', '走行', (r) => (r.mileage_k != null ? r.mileage_k + '千km' : ''), (r) => r.mileage_k, 'r'],
@@ -960,8 +981,9 @@ const MK_COLS = [
   ['result', '結果', (r) => esc(r.result || ''), (r) => r.result || '', ''],
   ['price', '金額', (r) => man(r.price_k), (r) => r.price_k, 'r b'],
 ];
-// 並べ替えの状態（表ごと）。まだ見出しを押していない表は、もとの順（似ている順）のまま
-let mkSort = { own: null, sim: null };
+// 並べ替えの状態（表ごと）。初期は年式の新しい順
+const MK_DEFAULT = () => ({ own: { key: 'year', dir: 'desc' }, sim: { key: 'year', dir: 'desc' } }); // 初期は年式の新しい順
+let mkSort = MK_DEFAULT();
 let mkCur = null; // 表示中の { it, d }
 function sortedRows(list, sort) {
   if (!sort) return list;
@@ -988,10 +1010,11 @@ function marketHtml(it, d) {
     }).join('')}</tr>`;
     return `<table class="mk-tbl ${cls}">${head}${sortedRows(list, sort).map(row).join('')}</table>`;
   };
-  return `<div class="mk-title">📈 実績　型式 <b>${esc(d.type)}</b></div>
+  return `<div class="mk-title"><button type="button" class="mk-close" aria-label="実績を閉じる">✕ 閉じる</button>📈 実績　型式 <b>${esc(d.type)}</b></div>
     ${d.stat ? `<div class="mk-stat">似た車両の落札 <b>${d.stat.n}</b> 台：中央値 <b>${man(d.stat.median)}</b>・平均 <b>${man(d.stat.avg)}</b>（${man(d.stat.min)} 〜 ${man(d.stat.max)}）</div>` : ''}
     ${d.own.length ? `<div class="mk-sub">この車両の過去の出品</div>${table('own', d.own, 'own')}` : ''}
-    ${d.similar.length ? `<div class="mk-sub">似た車両（年式・走行が近い順${d.similar_total > d.similar.length ? `／全 ${d.similar_total} 件中 ${d.similar.length} 件` : ''}）</div>${table('sim', d.similar, '')}` : ''}`;
+    ${d.similar.length ? `<div class="mk-sub">似た車両（年式・走行が近い${d.similar.length}件${d.similar_total > d.similar.length ? `／全 ${d.similar_total} 件中` : ''}）</div>${table('sim', d.similar, '')}` : ''}
+    <div class="mk-more">↓ 下に続きがあります（この中でスクロールできます）</div>`;
 }
 
 const pop = document.createElement('div');
@@ -1002,7 +1025,7 @@ let popTimer, popFor = null;
 async function showMarket(anchor, id) {
   const it = state.items.find((i) => i.id == id);
   if (!it) return;
-  if (popFor !== id) mkSort = { own: null, sim: null }; // 別の車両を開いたら並べ替えを戻す
+  if (popFor !== id) mkSort = MK_DEFAULT(); // 別の車両を開いたら並べ替えを戻す
   popFor = id;
   pop.innerHTML = '<p class="mk-none">読み込み中…</p>';
   pop.hidden = false;
@@ -1019,25 +1042,36 @@ async function showMarket(anchor, id) {
 }
 function placePop(anchor) {
   const r = anchor.getBoundingClientRect();
-  const vw = document.documentElement.clientWidth, vh = window.innerHeight, m = 8, gap = 6;
+  // いま見えている範囲（スマホでピンチ拡大しているときは、その見えている部分）に収める
+  const vv = window.visualViewport;
+  const X = vv ? vv.offsetLeft : 0, Y = vv ? vv.offsetTop : 0;
+  const vw = vv ? vv.width : document.documentElement.clientWidth, vh = vv ? vv.height : window.innerHeight;
+  const m = 8, gap = 6;
   const w = Math.min(760, vw - m * 2);
   pop.style.width = w + 'px';
-  pop.style.left = Math.max(m, Math.min(r.left, vw - w - m)) + 'px';
+  pop.style.left = Math.max(X + m, Math.min(r.left, X + vw - w - m)) + 'px';
   // 本来の高さを測ってから、下・上のうち収まる方（どちらも無理なら広い方）に出す
   pop.style.maxHeight = 'none';
   const h = pop.offsetHeight;
-  const below = vh - r.bottom - gap - m, above = r.top - gap - m;
+  const below = Y + vh - r.bottom - gap - m, above = r.top - Y - gap - m;
   let top, max;
   if (h <= below) { top = r.bottom + gap; max = below; }
   else if (h <= above) { top = r.top - gap - h; max = above; }
-  else if (Math.max(below, above) >= 240) {
-    if (below >= above) { top = r.bottom + gap; max = below; } else { max = above; top = m; }
-  } else { top = m; max = vh - m * 2; } // 上下とも狭いときは画面全体を使う
+  else { top = Y + m; max = vh - m * 2; } // 上にも下にも入らないときは、見えている範囲いっぱいを使い、中でスクロールする
   pop.style.maxHeight = max + 'px';
-  pop.style.top = Math.max(m, top) + 'px';
+  pop.style.top = Math.max(Y + m, top) + 'px';
+  updateMore();
 }
-// 見出しを押すと昇順→降順→昇順…と切り替わる（表ごと）
+// 中身が枠に入りきらないときは「続きがある」表示を出す（一番下までスクロールしたら消す）
+function updateMore() {
+  const over = pop.scrollHeight > pop.clientHeight + 2;
+  pop.classList.toggle('mk-over', over);
+  pop.classList.toggle('mk-end', !over || pop.scrollTop + pop.clientHeight >= pop.scrollHeight - 4);
+}
+pop.addEventListener('scroll', updateMore, { passive: true });
+// 見出しを押すと昇順→降順→昇順…と切り替わる（表ごと）／「閉じる」で閉じる
 pop.addEventListener('click', (e) => {
+  if (e.target.closest('.mk-close')) { e.stopPropagation(); hidePop(); return; }
   const th = e.target.closest('th.mk-sort');
   if (!th || !mkCur) return;
   e.stopPropagation(); // 表を作り直すと押した見出しが消え、「外をクリックした」と誤判定して閉じてしまうため
@@ -1046,10 +1080,14 @@ pop.addEventListener('click', (e) => {
   const top = pop.scrollTop;
   pop.innerHTML = marketHtml(mkCur.it, mkCur.d);
   pop.scrollTop = top;
+  updateMore();
 });
 function hidePop() { pop.hidden = true; popFor = null; }
 // 車名の欄（実績バッジがある車両）にマウスを乗せると表示
+// スマホ・タブレット（マウスを乗せられない端末）では、タップでの開閉だけにする
+const noHover = () => window.matchMedia('(hover: none)').matches;
 $('#tbl').addEventListener('mouseover', (e) => {
+  if (noHover()) return;
   const td = e.target.closest('td[data-key="name"]');
   const badge = td?.querySelector('.mk-badge');
   if (!badge) return;
@@ -1057,6 +1095,7 @@ $('#tbl').addEventListener('mouseover', (e) => {
   popTimer = setTimeout(() => showMarket(td, badge.dataset.mk), 250);
 });
 $('#tbl').addEventListener('mouseout', (e) => {
+  if (noHover()) return;
   const td = e.target.closest('td[data-key="name"]');
   if (!td || td.contains(e.relatedTarget) || pop.contains(e.relatedTarget)) return;
   clearTimeout(popTimer);
