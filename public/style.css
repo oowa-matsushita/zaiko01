@@ -218,6 +218,11 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .toggle::before { content: "☐ "; }
 .toggle[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 .toggle[aria-pressed="true"]::before { content: "☑ "; }
+/* 3択（すべて／自社名済／自社名待ち）：つながった四角いボタン */
+.seg { display: inline-flex; }
+.seg button { margin-left: -1px; }
+.seg button:first-child { margin-left: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); position: relative; z-index: 1; }
 /* ボタン類は角を四角に */
 button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important; }
 /* 色の列は狭く（長い色名は折り返す） */

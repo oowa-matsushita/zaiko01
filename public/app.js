@@ -30,7 +30,7 @@ const state = { q: '', event_date: '', shipped_date: '', beforeShip: true, own: 
 try {
   // 出庫前のみ表示は既定でオン（自分でオフにした場合だけオフのまま）
   state.beforeShip = localStorage.getItem('zaiko-before-ship-v2') !== '0';
-  state.own = localStorage.getItem('zaiko-own') === 'done' ? 'done' : ''; // 以前の「自社名待ち」の保存は無効
+  state.own = ['done', 'wait'].includes(localStorage.getItem('zaiko-own')) ? localStorage.getItem('zaiko-own') : '';
   state.venue = ['名古屋', '静岡'].includes(localStorage.getItem('zaiko-venue')) ? localStorage.getItem('zaiko-venue') : '';
   state.carrier = localStorage.getItem('zaiko-carrier') || '';
 } catch { /* 既定はオフ */ }
@@ -853,12 +853,13 @@ beforeBtn.addEventListener('click', () => {
   load();
 });
 
-// ---- 自社名済（自社名の日付が入っている車両だけ）。もう一度押すと解除 ----
+// ---- 自社名：すべて／自社名済（日付が入っている）／自社名待ち（まだ入っていない）。1つだけ選ぶ ----
 const ownBtns = document.querySelectorAll('[data-own]');
 const updateOwnBtns = () => ownBtns.forEach((b) => b.setAttribute('aria-pressed', String(state.own === b.dataset.own)));
 updateOwnBtns();
 ownBtns.forEach((b) => b.addEventListener('click', () => {
-  state.own = state.own === b.dataset.own ? '' : b.dataset.own;
+  if (state.own === b.dataset.own) return;
+  state.own = b.dataset.own;
   try { localStorage.setItem('zaiko-own', state.own); } catch { /* 無視 */ }
   updateOwnBtns();
   load();

@@ -37,7 +37,11 @@
       <span id="count" class="muted"></span>
       <span class="spacer"></span>
       <button id="btn-before-ship" class="toggle" aria-pressed="false" title="出庫日が今日以降、または出庫日が未定の車両だけを表示">出庫前のみ表示</button>
-      <button class="toggle" data-own="done" aria-pressed="false" title="自社名の日付が入っている車両だけを表示">自社名済</button>
+      <span class="seg" role="group" aria-label="自社名">
+        <button type="button" data-own="" aria-pressed="true" title="自社名の入っている・いないにかかわらず全部表示">すべて</button>
+        <button type="button" data-own="done" aria-pressed="false" title="自社名の日付が入っている車両だけを表示">自社名済</button>
+        <button type="button" data-own="wait" aria-pressed="false" title="自社名の日付がまだ入っていない車両だけを表示">自社名待ち</button>
+      </span>
       <label class="carrier-filter" title="会場で絞り込み">会場
         <select id="f-venue">
           <option value="">すべて</option>
