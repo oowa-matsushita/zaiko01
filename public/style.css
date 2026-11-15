@@ -320,6 +320,7 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 .mk-pop.mk-over:not(.mk-end) .mk-more { display: block; }
 .mk-close { float: right; margin-left: 8px; padding: 2px 8px; font-size: .85rem; display: none; }
 @media (hover: none), (max-width: 600px) { .mk-close { display: inline-block; } }
+.mk-pop.mk-pinned .mk-close { display: inline-block; }
 .mk-stat { margin-bottom: 6px; padding: 4px 8px; background: #ede9fe; color: #4c1d95; }
 @media (prefers-color-scheme: dark) { .mk-stat { background: #2e1f5e; color: #ddd6fe; } }
 .mk-sub { font-weight: 700; margin: 8px 0 3px; }

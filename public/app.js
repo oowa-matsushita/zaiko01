@@ -1022,10 +1022,12 @@ const pop = document.createElement('div');
 pop.className = 'mk-pop';
 pop.hidden = true;
 document.body.appendChild(pop);
-let popTimer, popFor = null;
+let popTimer, popFor = null, mkAnchor = null, mkPinned = false; // mkPinned：クリックで固定（マウスを外しても閉じない）
 async function showMarket(anchor, id) {
   const it = state.items.find((i) => i.id == id);
   if (!it) return;
+  mkAnchor = anchor;
+  if (popFor === id && !pop.hidden) return; // すでに表示中の車両は作り直さない（スクロール位置が先頭に戻ってしまうため）
   if (popFor !== id) mkSort = MK_DEFAULT(); // 別の車両を開いたら並べ替えを戻す
   popFor = id;
   pop.innerHTML = '<p class="mk-none">読み込み中…</p>';
@@ -1083,12 +1085,12 @@ pop.addEventListener('click', (e) => {
   pop.scrollTop = top;
   updateMore();
 });
-function hidePop() { pop.hidden = true; popFor = null; }
+function hidePop() { pop.hidden = true; popFor = null; mkPinned = false; pop.classList.remove('mk-pinned'); }
 // 車名の欄（実績バッジがある車両）にマウスを乗せると表示
 // スマホ・タブレット（マウスを乗せられない端末）では、タップでの開閉だけにする
 const noHover = () => window.matchMedia('(hover: none)').matches;
 $('#tbl').addEventListener('mouseover', (e) => {
-  if (noHover()) return;
+  if (noHover() || mkPinned) return;
   const td = e.target.closest('td[data-key="name"]');
   const badge = td?.querySelector('.mk-badge');
   if (!badge) return;
@@ -1096,23 +1098,43 @@ $('#tbl').addEventListener('mouseover', (e) => {
   popTimer = setTimeout(() => showMarket(td, badge.dataset.mk), 250);
 });
 $('#tbl').addEventListener('mouseout', (e) => {
-  if (noHover()) return;
+  if (noHover() || mkPinned) return;
   const td = e.target.closest('td[data-key="name"]');
   if (!td || td.contains(e.relatedTarget) || pop.contains(e.relatedTarget)) return;
   clearTimeout(popTimer);
   popTimer = setTimeout(hidePop, 200);
 });
 pop.addEventListener('mouseenter', () => clearTimeout(popTimer));
-pop.addEventListener('mouseleave', () => { popTimer = setTimeout(hidePop, 200); });
-// スマホ：実績バッジをタップで表示／もう一度タップで閉じる
+pop.addEventListener('mouseleave', () => { if (!mkPinned) popTimer = setTimeout(hidePop, 200); });
+// 実績バッジのクリック／タップ
+//  スマホ：タップで表示、もう一度タップで閉じる
+//  パソコン：クリックで「固定」（マウスを外しても閉じない。✕閉じる・Esc・ほかの場所のクリックで閉じる）
 $('#tbl').addEventListener('click', (e) => {
   const badge = e.target.closest('.mk-badge');
   if (!badge) return;
   e.stopPropagation();
-  if (popFor === badge.dataset.mk && !pop.hidden) hidePop(); else showMarket(badge.closest('td'), badge.dataset.mk);
+  const id = badge.dataset.mk;
+  if (noHover()) {
+    if (popFor === id && !pop.hidden) hidePop(); else showMarket(badge.closest('td'), id);
+    return;
+  }
+  if (mkPinned && popFor === id && !pop.hidden) { hidePop(); return; }
+  clearTimeout(popTimer);
+  mkPinned = true;
+  pop.classList.add('mk-pinned');
+  showMarket(badge.closest('td'), id);
 }, true);
+// 吹き出しが開いていて、バッジの上でホイールを回したときは、吹き出しの中をスクロールする
+document.addEventListener('wheel', (e) => {
+  if (pop.hidden || pop.contains(e.target) || !mkAnchor?.contains(e.target)) return;
+  if (pop.scrollHeight <= pop.clientHeight + 2) return;
+  e.preventDefault();
+  pop.scrollTop += e.deltaY * (e.deltaMode === 1 ? 16 : 1);
+  updateMore();
+}, { passive: false });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) hidePop(); });
 document.addEventListener('click', (e) => { if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.mk-badge')) hidePop(); });
-$('.table-wrap').addEventListener('scroll', hidePop);
+$('.table-wrap').addEventListener('scroll', () => { if (!mkPinned) hidePop(); });
 
 // 最初の表示：相場データの件数（型式ごと）を読み込んでから一覧を表示
 loadMarketCounts().finally(load);
