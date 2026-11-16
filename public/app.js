@@ -1009,7 +1009,10 @@ function marketHtml(it, d) {
       const on = sort?.key === c[0];
       return `<th class="mk-sort" data-t="${t}" data-k="${c[0]}" title="押すと並べ替え" aria-sort="${on ? (sort.dir === 'desc' ? 'descending' : 'ascending') : 'none'}">${c[1]}${on ? (sort.dir === 'desc' ? ' ▼' : ' ▲') : ''}</th>`;
     }).join('')}</tr>`;
-    return `<table class="mk-tbl ${cls}">${head}${sortedRows(list, sort).map(row).join('')}</table>`;
+    // スマホ用：見出しの代わりに「並べ替え［項目］［昇順／降順］」の1行にまとめる（パソコンでは見出しを押す）
+    const bar = `<div class="mk-sortbar"><label>並べ替え <select class="mk-sortsel" data-t="${t}">${cols.map((c) => `<option value="${c[0]}"${sort?.key === c[0] ? ' selected' : ''}>${c[1]}</option>`).join('')}</select></label>
+      <button type="button" class="mk-dir" data-t="${t}">${sort?.dir === 'asc' ? '▲ 昇順' : '▼ 降順'}</button></div>`;
+    return `${bar}<table class="mk-tbl ${cls}">${head}${sortedRows(list, sort).map(row).join('')}</table>`;
   };
   return `<div class="mk-title"><button type="button" class="mk-close" aria-label="実績を閉じる">✕ 閉じる</button>📈 実績　型式 <b>${esc(d.type)}</b></div>
     ${d.stat ? `<div class="mk-stat">似た車両の落札 <b>${d.stat.n}</b> 台：中央値 <b>${man(d.stat.median)}</b>・平均 <b>${man(d.stat.avg)}</b>（${man(d.stat.min)} 〜 ${man(d.stat.max)}）</div>` : ''}
@@ -1073,17 +1076,37 @@ function updateMore() {
 }
 pop.addEventListener('scroll', updateMore, { passive: true });
 // 見出しを押すと昇順→降順→昇順…と切り替わる（表ごと）／「閉じる」で閉じる
-pop.addEventListener('click', (e) => {
-  if (e.target.closest('.mk-close')) { e.stopPropagation(); hidePop(); return; }
-  const th = e.target.closest('th.mk-sort');
-  if (!th || !mkCur) return;
-  e.stopPropagation(); // 表を作り直すと押した見出しが消え、「外をクリックした」と誤判定して閉じてしまうため
-  const t = th.dataset.t, k = th.dataset.k, cur = mkSort[t];
-  mkSort[t] = { key: k, dir: cur?.key === k && cur.dir === 'asc' ? 'desc' : 'asc' };
+// 表を作り直す（押した見出しなどが消えるので、「外をクリックした」と誤判定されないよう各処理で stopPropagation する）
+function rerenderMarket() {
   const top = pop.scrollTop;
   pop.innerHTML = marketHtml(mkCur.it, mkCur.d);
   pop.scrollTop = top;
   updateMore();
+}
+const NEWER_FIRST = new Set(['date', 'year', 'km', 'price', 'score']); // 項目を切り替えたとき、最初は大きい順（新しい順）にする
+pop.addEventListener('click', (e) => {
+  if (e.target.closest('.mk-close')) { e.stopPropagation(); hidePop(); return; }
+  if (!mkCur) return;
+  const dir = e.target.closest('.mk-dir');
+  if (dir) { // スマホ：昇順⇔降順
+    e.stopPropagation();
+    const t = dir.dataset.t, cur = mkSort[t] || { key: 'year', dir: 'desc' };
+    mkSort[t] = { key: cur.key, dir: cur.dir === 'asc' ? 'desc' : 'asc' };
+    rerenderMarket();
+    return;
+  }
+  const th = e.target.closest('th.mk-sort');
+  if (!th) return;
+  e.stopPropagation();
+  const t = th.dataset.t, k = th.dataset.k, cur = mkSort[t];
+  mkSort[t] = { key: k, dir: cur?.key === k && cur.dir === 'asc' ? 'desc' : 'asc' };
+  rerenderMarket();
+});
+pop.addEventListener('change', (e) => { // スマホ：並べ替えの項目を選ぶ
+  const sel = e.target.closest('.mk-sortsel');
+  if (!sel || !mkCur) return;
+  mkSort[sel.dataset.t] = { key: sel.value, dir: NEWER_FIRST.has(sel.value) ? 'desc' : 'asc' };
+  rerenderMarket();
 });
 function hidePop() { pop.hidden = true; popFor = null; mkPinned = false; pop.classList.remove('mk-pinned'); }
 // 車名の欄（実績バッジがある車両）にマウスを乗せると表示
