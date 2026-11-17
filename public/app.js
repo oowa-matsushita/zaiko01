@@ -26,13 +26,14 @@ const mdDate = (d) => {
   const thisYear = new Date(Date.now() + 9 * 3600e3).getUTCFullYear();
   return `${y !== thisYear ? y + '年' : ''}${m}月${day}日`;
 };
-const state = { q: '', event_date: '', shipped_date: '', beforeShip: true, own: '', venue: '', carrier: '', items: [] };
+const state = { q: '', event_date: '', shipped_date: '', beforeShip: true, own: '', venue: '', carrier: '', months: '', items: [] };
 try {
   // 出庫前のみ表示は既定でオン（自分でオフにした場合だけオフのまま）
   state.beforeShip = localStorage.getItem('zaiko-before-ship-v2') !== '0';
   state.own = ['done', 'wait'].includes(localStorage.getItem('zaiko-own')) ? localStorage.getItem('zaiko-own') : '';
   state.venue = ['名古屋', '静岡'].includes(localStorage.getItem('zaiko-venue')) ? localStorage.getItem('zaiko-venue') : '';
   state.carrier = localStorage.getItem('zaiko-carrier') || '';
+  state.months = ['3', '6'].includes(localStorage.getItem('zaiko-mk-months')) ? localStorage.getItem('zaiko-mk-months') : ''; // 実績の期間
 } catch { /* 既定はオフ */ }
 
 async function api(path, opts = {}) {
@@ -910,6 +911,20 @@ function updateScrollHints() {
 let fitTimer;
 window.addEventListener('resize', () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitTable, 150); });
 
+// ---- 実績の期間（3ヶ月以内／6ヶ月以内／全て）：バッジの件数と吹き出しの中身が、その期間の実績だけになる ----
+const periodBtns = document.querySelectorAll('#mk-period [data-months]');
+const updatePeriodBtns = () => periodBtns.forEach((b) => b.setAttribute('aria-pressed', String(state.months === b.dataset.months)));
+updatePeriodBtns();
+periodBtns.forEach((b) => b.addEventListener('click', async () => {
+  if (state.months === b.dataset.months) return;
+  state.months = b.dataset.months;
+  try { localStorage.setItem('zaiko-mk-months', state.months); } catch { /* 無視 */ }
+  updatePeriodBtns();
+  hidePop();
+  await loadMarketCounts();
+  load();
+}));
+
 // ---- 会場（名古屋／静岡）で絞り込み ----
 const venueSel = $('#f-venue');
 venueSel.value = state.venue;
@@ -956,7 +971,7 @@ function marketCount(it) {
   return n;
 }
 async function loadMarketCounts() {
-  try { marketTypes = (await api('/api/market-counts')).types || {}; } catch { marketTypes = {}; }
+  try { marketTypes = (await api('/api/market-counts' + (state.months ? `?months=${state.months}` : ''))).types || {}; } catch { marketTypes = {}; }
 }
 
 const man = (k) => (k == null ? '' : '¥' + (k * 1000).toLocaleString('ja-JP'));
@@ -1007,7 +1022,7 @@ function mkStat(list) {
   return { n: v.length, avg: Math.round(v.reduce((x, y) => x + y, 0) / v.length), median: v.length % 2 ? v[m] : Math.round((v[m - 1] + v[m]) / 2), min: v[0], max: v[v.length - 1] };
 }
 function marketHtml(it, d) {
-  if (!d.own.length && !d.similar.length) return `<p class="mk-none">型式 ${esc(d.type)} の実績データはありません</p>`;
+  if (!d.own.length && !d.similar.length) return `<p class="mk-none">型式 ${esc(d.type)} の${d.months ? `直近${d.months}ヶ月の` : ''}実績データはありません</p>`;
   const venues = [...new Set([...d.own, ...d.similar].map((r) => r.venue).filter(Boolean))];
   if (mkVenue && !venues.includes(mkVenue)) mkVenue = '';
   const pick = (list) => (mkVenue ? list.filter((r) => r.venue === mkVenue) : list);
@@ -1029,7 +1044,7 @@ function marketHtml(it, d) {
   const stat = mkVenue ? mkStat(sim) : d.stat;
   const venueBar = venues.length > 1 ? `<div class="mk-filter"><label>会場 <select class="mk-venuesel"><option value="">すべて</option>${venues.map((v) => `<option${v === mkVenue ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></label></div>` : '';
   const count = mkVenue ? `${sim.length}件／全${d.similar.length}件中` : `${d.similar.length}件`;
-  return `<div class="mk-title"><button type="button" class="mk-close" aria-label="実績を閉じる">✕ 閉じる</button>📈 実績　型式 <b>${esc(d.type)}</b></div>
+  return `<div class="mk-title"><button type="button" class="mk-close" aria-label="実績を閉じる">✕ 閉じる</button>📈 実績　型式 <b>${esc(d.type)}</b>${d.months ? `　<span class="mk-period-note">（直近${d.months}ヶ月）</span>` : ''}</div>
     ${venueBar}
     ${stat ? `<div class="mk-stat">${mkVenue ? esc(mkVenue) + 'の' : ''}似た車両の落札 <b>${stat.n}</b> 台：中央値 <b>${man(stat.median)}</b>・平均 <b>${man(stat.avg)}</b>（${man(stat.min)} 〜 ${man(stat.max)}）</div>` : ''}
     ${own.length ? `<div class="mk-sub">この車両の過去の出品</div>${table('own', own, 'own')}` : ''}
@@ -1053,9 +1068,10 @@ async function showMarket(anchor, id) {
   pop.hidden = false;
   placePop(anchor);
   try {
-    if (!marketCache.has(id)) marketCache.set(id, await api(`/api/market/${id}`));
+    const ck = `${id}|${state.months}`; // 期間ごとに別々に覚える
+    if (!marketCache.has(ck)) marketCache.set(ck, await api(`/api/market/${id}${state.months ? `?months=${state.months}` : ''}`));
     if (popFor !== id) return;
-    mkCur = { it, d: marketCache.get(id) };
+    mkCur = { it, d: marketCache.get(ck) };
     pop.innerHTML = marketHtml(it, mkCur.d);
     placePop(anchor);
   } catch (e) {

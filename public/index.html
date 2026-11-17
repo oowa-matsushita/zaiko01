@@ -35,6 +35,12 @@
     </div>
     <div class="row">
       <span id="count" class="muted"></span>
+      <span class="seg" id="mk-period" role="group" aria-label="実績の期間">
+        <button type="button" disabled class="seg-label">実績</button>
+        <button type="button" data-months="3" aria-pressed="false" title="開催日が直近3ヶ月以内の実績だけを表示">3ヶ月以内</button>
+        <button type="button" data-months="6" aria-pressed="false" title="開催日が直近6ヶ月以内の実績だけを表示">6ヶ月以内</button>
+        <button type="button" data-months="" aria-pressed="true" title="全期間の実績を表示">全て</button>
+      </span>
       <span class="spacer"></span>
       <button id="btn-before-ship" class="toggle" aria-pressed="false" title="出庫日が今日以降、または出庫日が未定の車両だけを表示">出庫前のみ表示</button>
       <span class="seg" role="group" aria-label="自社名">

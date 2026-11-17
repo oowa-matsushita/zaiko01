@@ -119,9 +119,14 @@ export async function list({ request, env }) {
   return json({ rows, dates });
 }
 
-export async function counts({ env }) {
+// ?months=3 / 6 のときだけ期間で絞る（それ以外は全期間）
+const monthsOf = (request) => { const n = Number(new URL(request.url).searchParams.get('months')); return n === 3 || n === 6 ? n : 0; };
+const SINCE = (months, i) => `auction_date >= date('now', '+9 hours', '-${months} months')`;
+
+export async function counts({ request, env }) {
   await ensureMarketTable(env.DB);
-  const r = await env.DB.prepare('SELECT type_code, COUNT(*) AS n FROM auction_results GROUP BY type_code').all();
+  const months = monthsOf(request);
+  const r = await env.DB.prepare(`SELECT type_code, COUNT(*) AS n FROM auction_results ${months ? 'WHERE ' + SINCE(months) : ''} GROUP BY type_code`).all();
   return json({ types: Object.fromEntries(r.results.map((x) => [norm(x.type_code), x.n])) });
 }
 
@@ -142,7 +147,8 @@ function median(list) {
   return a.length % 2 ? a[m] : Math.round((a[m - 1] + a[m]) / 2);
 }
 
-export async function forItem({ env, params }) {
+export async function forItem({ request, env, params }) {
+  const months = monthsOf(request);
   await ensureMarketTable(env.DB);
   const item = await env.DB.prepare('SELECT id, name, chassis_no, first_reg, mileage, mileage_unit FROM items WHERE id = ?1').bind(Number(params.id)).first();
   if (!item) return json({ error: '見つかりません' }, 404);
@@ -150,7 +156,7 @@ export async function forItem({ env, params }) {
   if (!type) return json({ type: '', own: [], similar: [] });
   // 型式は「NCP81」と「NCP81G」のように末尾が違うことがあるので前方一致で探す
   const list = (await env.DB.prepare(
-    `SELECT * FROM auction_results WHERE UPPER(REPLACE(type_code, ' ', '')) LIKE ?1 ORDER BY auction_date DESC LIMIT 300`
+    `SELECT * FROM auction_results WHERE UPPER(REPLACE(type_code, ' ', '')) LIKE ?1 ${months ? 'AND ' + SINCE(months) : ''} ORDER BY auction_date DESC LIMIT 300`
   ).bind(`${type}%`).all()).results;
   const year = westernYear(item.first_reg);
   const km = item.mileage == null ? null : (item.mileage_unit === 'mile' ? item.mileage * 1.609344 : item.mileage) / 1000;
@@ -168,5 +174,5 @@ export async function forItem({ env, params }) {
     min: Math.min(...sold), max: Math.max(...sold),
   } : null;
   // 同じ型式の実績は全件返す（最大300件。画面側で年式の新しい順に並べ、吹き出しの中でスクロールする）
-  return json({ type, own, similar: others, similar_total: others.length, stat });
+  return json({ type, months, own, similar: others, similar_total: others.length, stat });
 }

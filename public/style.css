@@ -220,7 +220,14 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .toggle[aria-pressed="true"]::before { content: "☑ "; }
 /* 3択（すべて／自社名済／自社名待ち）：つながった四角いボタン */
 .seg { display: inline-flex; }
+.row { gap: 6px; }
+.row .seg button, .row .toggle { padding-left: 8px; padding-right: 8px; }
+.row .seg .seg-label { padding-left: 6px; padding-right: 6px; }
+.row .carrier-filter { gap: 4px; }
+.row #btn-print, .row #btn-request { padding-left: 10px; padding-right: 10px; }
 .seg button { margin-left: -1px; }
+.seg .seg-label { background: var(--thead); color: var(--muted); opacity: 1; cursor: default; padding-left: 10px; padding-right: 10px; }
+.mk-period-note { font-size: .85rem; color: var(--muted); font-weight: 400; }
 .seg button:first-child { margin-left: 0; }
 .seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); position: relative; z-index: 1; }
 /* ボタン類は角を四角に */
