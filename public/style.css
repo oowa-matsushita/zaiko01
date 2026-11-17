@@ -326,10 +326,13 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 .mk-sub { font-weight: 700; margin: 8px 0 3px; }
 .mk-tbl { border-collapse: collapse; width: 100%; }
 .mk-tbl th, .mk-tbl td { border: 1px solid var(--line); padding: 3px 6px; white-space: nowrap; text-align: left; }
-.mk-tbl th { background: var(--thead); font-weight: 600; }
+.mk-tbl th { background: var(--thead); font-weight: 600; position: sticky; top: var(--mk-th-top, 26px); z-index: 1; }
 .mk-tbl th.mk-sort { cursor: pointer; user-select: none; }
 .mk-tbl th.mk-sort:hover { background: var(--sel); }
 .mk-sortbar { display: none; }
+.mk-filter { margin: 0 0 6px; }
+.mk-filter label { display: inline-flex; align-items: center; gap: 6px; font-size: .9rem; color: var(--muted); }
+.mk-filter select { width: auto; padding: 3px 8px; border-radius: 0; font-size: .9rem; }
 .mk-tbl td.w { white-space: normal; min-width: 4em; }
 .mk-tbl td.r { text-align: right; } .mk-tbl td.c { text-align: center; } .mk-tbl td.b { font-weight: 700; }
 .mk-tbl.own td { background: var(--sel); }

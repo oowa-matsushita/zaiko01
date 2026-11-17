@@ -167,5 +167,6 @@ export async function forItem({ env, params }) {
     n: sold.length, avg: Math.round(sold.reduce((a, b) => a + b, 0) / sold.length), median: median(sold),
     min: Math.min(...sold), max: Math.max(...sold),
   } : null;
-  return json({ type, own, similar: others.slice(0, 12), similar_total: others.length, stat });
+  // 同じ型式の実績は全件返す（最大300件。画面側で年式の新しい順に並べ、吹き出しの中でスクロールする）
+  return json({ type, own, similar: others, similar_total: others.length, stat });
 }

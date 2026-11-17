@@ -985,6 +985,7 @@ const MK_COLS = [
 // 並べ替えの状態（表ごと）。初期は年式の新しい順
 const MK_DEFAULT = () => ({ own: { key: 'year', dir: 'desc' }, sim: { key: 'year', dir: 'desc' } }); // 初期は年式の新しい順
 let mkSort = MK_DEFAULT();
+let mkVenue = ''; // 吹き出しの会場の絞り込み（''＝すべて）
 let mkCur = null; // 表示中の { it, d }
 function sortedRows(list, sort) {
   if (!sort) return list;
@@ -998,8 +999,19 @@ function sortedRows(list, sort) {
     return (typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b), 'ja')) * dir;
   });
 }
+// 落札の中央値・平均・幅（千円単位）
+function mkStat(list) {
+  const v = list.filter((r) => /落札/.test(r.result || '') && r.price_k > 0).map((r) => r.price_k).sort((x, y) => x - y);
+  if (!v.length) return null;
+  const m = Math.floor(v.length / 2);
+  return { n: v.length, avg: Math.round(v.reduce((x, y) => x + y, 0) / v.length), median: v.length % 2 ? v[m] : Math.round((v[m - 1] + v[m]) / 2), min: v[0], max: v[v.length - 1] };
+}
 function marketHtml(it, d) {
   if (!d.own.length && !d.similar.length) return `<p class="mk-none">型式 ${esc(d.type)} の実績データはありません</p>`;
+  const venues = [...new Set([...d.own, ...d.similar].map((r) => r.venue).filter(Boolean))];
+  if (mkVenue && !venues.includes(mkVenue)) mkVenue = '';
+  const pick = (list) => (mkVenue ? list.filter((r) => r.venue === mkVenue) : list);
+  const own = pick(d.own), sim = pick(d.similar);
   const all = [...d.own, ...d.similar];
   const cols = MK_COLS.filter((c) => all.some((r) => c[2](r) !== ''));
   const row = (r) => `<tr class="${/落札/.test(r.result || '') ? '' : 'mk-unsold'}">${cols.map((c) => `<td class="${c[4]}">${c[2](r)}</td>`).join('')}</tr>`;
@@ -1014,10 +1026,14 @@ function marketHtml(it, d) {
       <button type="button" class="mk-dir" data-t="${t}">${sort?.dir === 'asc' ? '▲ 昇順' : '▼ 降順'}</button></div>`;
     return `${bar}<table class="mk-tbl ${cls}">${head}${sortedRows(list, sort).map(row).join('')}</table>`;
   };
+  const stat = mkVenue ? mkStat(sim) : d.stat;
+  const venueBar = venues.length > 1 ? `<div class="mk-filter"><label>会場 <select class="mk-venuesel"><option value="">すべて</option>${venues.map((v) => `<option${v === mkVenue ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></label></div>` : '';
+  const count = mkVenue ? `${sim.length}件／全${d.similar.length}件中` : `${d.similar.length}件`;
   return `<div class="mk-title"><button type="button" class="mk-close" aria-label="実績を閉じる">✕ 閉じる</button>📈 実績　型式 <b>${esc(d.type)}</b></div>
-    ${d.stat ? `<div class="mk-stat">似た車両の落札 <b>${d.stat.n}</b> 台：中央値 <b>${man(d.stat.median)}</b>・平均 <b>${man(d.stat.avg)}</b>（${man(d.stat.min)} 〜 ${man(d.stat.max)}）</div>` : ''}
-    ${d.own.length ? `<div class="mk-sub">この車両の過去の出品</div>${table('own', d.own, 'own')}` : ''}
-    ${d.similar.length ? `<div class="mk-sub">似た車両（年式・走行が近い${d.similar.length}件${d.similar_total > d.similar.length ? `／全 ${d.similar_total} 件中` : ''}）</div>${table('sim', d.similar, '')}` : ''}
+    ${venueBar}
+    ${stat ? `<div class="mk-stat">${mkVenue ? esc(mkVenue) + 'の' : ''}似た車両の落札 <b>${stat.n}</b> 台：中央値 <b>${man(stat.median)}</b>・平均 <b>${man(stat.avg)}</b>（${man(stat.min)} 〜 ${man(stat.max)}）</div>` : ''}
+    ${own.length ? `<div class="mk-sub">この車両の過去の出品</div>${table('own', own, 'own')}` : ''}
+    ${d.similar.length ? `<div class="mk-sub">同じ型式の実績（${count}）</div>${sim.length ? table('sim', sim, '') : '<p class="mk-none">この会場の実績はありません</p>'}` : ''}
     <div class="mk-more">↓ 下に続きがあります（この中でスクロールできます）</div>`;
 }
 
@@ -1031,7 +1047,7 @@ async function showMarket(anchor, id) {
   if (!it) return;
   mkAnchor = anchor;
   if (popFor === id && !pop.hidden) return; // すでに表示中の車両は作り直さない（スクロール位置が先頭に戻ってしまうため）
-  if (popFor !== id) mkSort = MK_DEFAULT(); // 別の車両を開いたら並べ替えを戻す
+  if (popFor !== id) { mkSort = MK_DEFAULT(); mkVenue = ''; } // 別の車両を開いたら並べ替え・絞り込みを戻す
   popFor = id;
   pop.innerHTML = '<p class="mk-none">読み込み中…</p>';
   pop.hidden = false;
@@ -1070,6 +1086,8 @@ function placePop(anchor) {
 }
 // 中身が枠に入りきらないときは「続きがある」表示を出す（一番下までスクロールしたら消す）
 function updateMore() {
+  const title = pop.querySelector('.mk-title');
+  if (title) pop.style.setProperty('--mk-th-top', Math.max(0, title.offsetHeight - 10) + 'px'); // 表の見出しをタイトルの下に固定するための位置
   const over = pop.scrollHeight > pop.clientHeight + 2;
   pop.classList.toggle('mk-over', over);
   pop.classList.toggle('mk-end', !over || pop.scrollTop + pop.clientHeight >= pop.scrollHeight - 4);
@@ -1102,7 +1120,8 @@ pop.addEventListener('click', (e) => {
   mkSort[t] = { key: k, dir: cur?.key === k && cur.dir === 'asc' ? 'desc' : 'asc' };
   rerenderMarket();
 });
-pop.addEventListener('change', (e) => { // スマホ：並べ替えの項目を選ぶ
+pop.addEventListener('change', (e) => {
+  if (e.target.closest('.mk-venuesel')) { mkVenue = e.target.value; rerenderMarket(); return; } // 会場の絞り込み
   const sel = e.target.closest('.mk-sortsel');
   if (!sel || !mkCur) return;
   mkSort[sel.dataset.t] = { key: sel.value, dir: NEWER_FIRST.has(sel.value) ? 'desc' : 'asc' };
