@@ -594,10 +594,16 @@ const reqVal = (it, k) => k === 'mileage' ? (fmtMileage(it) ?? '')
   : DATE_FIELDS_REQ.has(k) ? (it[k] ? `${mdDate(it[k])}(${WD[dow(it[k])]})` : '')
   : (it[k] ?? '');
 const todayLabel = () => { const t = jstToday(); return `${mdDate(t)}(${WD[dow(t)]})`; };
+// いま選んでいる絞り込み（印刷・依頼の「対象」に表示する）
 function filterLabel() {
   const f = [];
   if (state.event_date) f.push(`開催日 ${shortDate(state.event_date)}`);
   if (state.shipped_date) f.push(`出庫日 ${shortDate(state.shipped_date)}`);
+  if (state.beforeShip) f.push('出庫前のみ');
+  if (state.own === 'done') f.push('自社名済');
+  if (state.own === 'wait') f.push('自社名待ち');
+  if (state.venue) f.push(`会場 ${state.venue}`);
+  if (state.carrier) f.push(`陸送会社 ${state.carrier === 'none' ? '未選択' : state.carrier}`);
   if (state.q) f.push(`検索「${state.q}」`);
   return f.join('／');
 }
@@ -668,20 +674,28 @@ function openPdfWindow(items, fields = REQ_FIELDS, title = '依頼一覧') {
   const fl = filterLabel();
   const cls = (k) => k === 'mileage' ? ' class="r"' : WIDE_FIELDS.has(k) ? ' class="w"' : CENTER_FIELDS.has(k) ? ' class="c"' : '';
   const rows = items.map((it, i) => `<tr><td class="n">${i + 1}</td>${fields.map(([k]) => `<td${cls(k)}>${esc(reqVal(it, k))}</td>`).join('')}</tr>`).join('');
+  const n = fields.length + 1;
+  // 用紙の余白は 0 にして、上下の余白は表の見出し・末尾の空白行で作る。
+  // （余白があると、ブラウザが「about:blank」などを右下に印字してしまうため）
   w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8">
 <title>${title}_${jstToday()}</title><style>${POPUP_STYLE}
-@page{size:A4 landscape;margin:12mm}
-h1{font-size:18px;margin:0 0 4px}.sub{font-size:12px;color:#444;margin:0 0 10px}
+@page{size:A4 landscape;margin:0}
+body{padding:0}.page{padding:12mm 12mm 0}
+h1{font-size:18px;margin:0 0 4px}.sub{font-size:12px;color:#444;margin:0 0 6px}
+.cond{font-size:13px;margin:0 0 6px;padding:5px 9px;border:1px solid #444;display:inline-block;max-width:100%}.cond b{font-weight:700}
 table{border-collapse:collapse;width:100%;font-size:11px}
 th,td{border:1px solid #888;padding:4px 6px;text-align:left;vertical-align:top}
 th{background:#eef0f3}td.n{text-align:right;width:2em}td.r{text-align:right;white-space:nowrap}th,td{white-space:nowrap}td.w{white-space:normal;min-width:10em}.c{text-align:center}
-tr{break-inside:avoid}thead{display:table-header-group}
-.bar{margin-bottom:12px;display:flex;gap:8px;align-items:center}
-@media print{.bar{display:none}body{padding:0}}</style></head><body>
+tr{break-inside:avoid}thead{display:table-header-group}tfoot{display:table-footer-group}
+.sp td{border:0;padding:0;height:0}
+.bar{margin:12px;display:flex;gap:8px;align-items:center}
+@media print{.bar{display:none}.sp td{height:12mm}.page{padding:0 12mm}.head{padding-top:12mm}}</style></head><body>
 <div class="bar"><button class="primary" onclick="print()">印刷 / PDFで保存</button><span style="font-size:13px;color:#555">印刷画面で「送信先：PDFに保存」を選ぶとPDFになります</span></div>
+<div class="page"><div class="head">
 <h1>${title}</h1>
-<p class="sub">${esc(todayLabel())}　全${items.length}台${fl ? '　対象：' + esc(fl) : ''}</p>
-<table><thead><tr><th>No.</th>${fields.map(([k, l]) => `<th${CENTER_FIELDS.has(k) ? ' class="c"' : ''}>${l}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>
+<p class="sub">${esc(todayLabel())}　全${items.length}台</p>
+<p class="cond"><b>対象：</b>${fl ? esc(fl) : 'すべて（絞り込みなし）'}</p></div>
+<table><thead><tr class="sp"><td colspan="${n}"></td></tr><tr><th>No.</th>${fields.map(([k, l]) => `<th${CENTER_FIELDS.has(k) ? ' class="c"' : ''}>${l}</th>`).join('')}</tr></thead><tfoot><tr class="sp"><td colspan="${n}"></td></tr></tfoot><tbody>${rows}</tbody></table></div>
 </body></html>`);
   w.document.close();
   w.focus();
