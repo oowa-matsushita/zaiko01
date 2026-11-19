@@ -182,7 +182,11 @@ const LAYOUTS = {
   ],
 };
 // 表示は1段（横長）のみ
-const layout = () => LAYOUTS[1];
+// ナンバー外し依頼の選択中は、登録番号を車名の近く（グレードの位置）に出し、グレードは登録番号の位置に入れ替える
+const SWAP_IN_PLATE_MODE = { grade: 'plate_no', plate_no: 'grade' };
+const layout = () => (state.plateMode
+  ? LAYOUTS[1].map((keys) => keys.map((k) => SWAP_IN_PLATE_MODE[k] ?? k))
+  : LAYOUTS[1]);
 const sortState = { key: 'id', dir: -1 };
 // 並び替え用の値（マイルは km に換算して比較）
 // 和暦（昭和・平成・令和）の年月を並び替え用の数値に（例：平成24年06月 → 201206）
