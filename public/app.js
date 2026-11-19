@@ -687,7 +687,7 @@ function openPdfWindow(items, fields = REQ_FIELDS, title = '依頼一覧', opts 
   // （余白があると、ブラウザが「about:blank」などを右下に印字してしまうため）
   w.document.write(`<!doctype html><html lang="ja"><head><meta charset="utf-8">
 <title>${title}_${jstToday()}</title><style>${POPUP_STYLE}
-@page{size:A4 landscape;margin:0}
+@page{size:A4 ${opts.portrait ? 'portrait' : 'landscape'};margin:0}
 body{padding:0}.page{padding:12mm 12mm 0}
 h1{font-size:18px;margin:0 0 4px}.sub{font-size:12px;color:#444;margin:0 0 6px}
 .cond{font-size:13px;margin:0 0 6px;padding:5px 9px;border:1px solid #444;display:inline-block;max-width:100%}.cond b{font-weight:700}
@@ -758,7 +758,7 @@ $('#plate-ok').addEventListener('click', () => {
   const items = sortedItems().filter((it) => plateSel.has(it.id));
   if (!items.length) { toast('ナンバーを外す車両にチェックを入れてください', true); return; }
   const noPlate = items.filter((it) => !String(it.plate_no || '').trim()).length;
-  if (!openPdfWindow(items, PLATE_FIELDS, 'ナンバー外し依頼', { big: true, showFilter: false })) return;
+  if (!openPdfWindow(items, PLATE_FIELDS, 'ナンバー外し依頼', { big: true, showFilter: false, portrait: true })) return;
   setPlateMode(false);
   if (noPlate) toast(`登録番号が空の車両が ${noPlate} 台あります（PDFでは空欄です）`, true);
 });
