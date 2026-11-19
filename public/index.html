@@ -70,14 +70,28 @@
           <option value="none">未選択</option>
         </select>
       </label>
-      <button id="btn-print">🖨 一覧印刷</button>
-      <span class="menu-wrap">
-        <button id="btn-request" class="primary" aria-haspopup="true">依頼する ▾</button>
-        <span id="req-menu" class="menu" hidden>
-          <button type="button" data-req="mail">✉ メール（コピーして貼り付け）</button>
-          <button type="button" data-req="pdf">🖨 PDF（印刷）</button>
+      <span class="row-actions">
+        <button id="btn-print">🖨 一覧印刷</button>
+        <span class="menu-wrap">
+          <button id="btn-request" class="primary" aria-haspopup="true">依頼する ▾</button>
+          <span id="req-menu" class="menu" hidden>
+            <button type="button" data-req="mail">✉ メール（コピーして貼り付け）</button>
+            <button type="button" data-req="pdf">🖨 PDF（印刷）</button>
+          </span>
         </span>
+        <button id="btn-plate" type="button" aria-pressed="false" title="ナンバーを外す車両にチェックを入れて、PDFで印刷します">ナンバー外し依頼</button>
       </span>
+    </div>
+    <!-- ナンバー外し依頼：表の左端がチェックに変わり、OKで 車名・車台番号・登録番号・色 をPDFにする -->
+    <div id="plate-bar" class="plate-bar" role="region" aria-label="ナンバー外し依頼" hidden>
+      <b>ナンバー外し依頼</b>
+      <span>表の左端のチェックで、ナンバーを外す車両を選んでください。</span>
+      <span id="plate-count" class="plate-count"></span>
+      <span class="spacer"></span>
+      <button type="button" id="plate-all">表示中を全部選ぶ</button>
+      <button type="button" id="plate-none">選択を外す</button>
+      <button type="button" id="plate-cancel">やめる</button>
+      <button type="button" id="plate-ok" class="primary">OK</button>
     </div>
   </section>
 
@@ -108,6 +122,7 @@
       <label>車名 *<input name="name" required placeholder="例：プリウス"></label>
       <label>グレード<input name="grade" placeholder="例：S ツーリングセレクション"></label>
       <label class="full">車台番号<input name="chassis_no" autocapitalize="characters" placeholder="例：ZVW30-1234567"></label>
+      <label class="full">登録番号（ナンバー）<input name="plate_no" placeholder="例：名古屋 300 あ 12-34"></label>
       <label>色<input name="color" list="dl-color" placeholder="例：パールホワイト"></label>
       <label>カラーコード<input name="color_code" autocapitalize="characters" placeholder="例：070"></label>
       <label class="full">走行距離

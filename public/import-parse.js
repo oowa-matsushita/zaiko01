@@ -67,6 +67,7 @@ const HEAD = {
   chassis: ['車台番号', '車体番号'],
   purchase: ['仕入金額', '買取金額', '仕入価格', '買取価格'],
   list: ['予定売価本体予定', '予定売価', '予定価格', '予定売価本体'],
+  plate: ['登録番号', '登録No', '登録ナンバー', '車両番号', 'ナンバー', 'ナンバープレート'],
 };
 
 export function csvToItems(rows) {
@@ -92,6 +93,7 @@ export function csvToItems(rows) {
       mileage_unit: 'km',
       grade: get(r, 'grade'),
       first_reg: get(r, 'first_reg'),
+      plate_no: get(r, 'plate').replace(/\s+/g, ' ').trim(),
       list_price: (() => { const v = Number(get(r, 'list').replace(/[^\d]/g, '')); return get(r, 'list') !== '' && Number.isFinite(v) && v > 0 ? v : null; })(),
       purchase_price: (() => { const v = Number(get(r, 'purchase').replace(/[^\d]/g, '')); return get(r, 'purchase') !== '' && Number.isFinite(v) ? v : null; })(),
     };

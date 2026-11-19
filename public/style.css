@@ -410,3 +410,26 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 .btn-like { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid var(--line); background: var(--card); color: var(--text); text-decoration: none; cursor: pointer; font-size: .95rem; }
 .btn-like.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 .small { font-size: .8rem; }
+
+/* ---- ナンバー外し依頼：左端のNo.をチェック欄に ---- */
+#btn-plate[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.row #btn-plate { padding-left: 10px; padding-right: 10px; }
+.plate-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 12px;
+  background: var(--hover); border: 1px solid var(--tline); border-left: 5px solid var(--accent);
+}
+.plate-count { font-weight: 700; color: var(--accent); }
+#tbl td.plate-cell { padding: 0; }
+.plate-lbl { display: flex; align-items: center; justify-content: center; min-width: 46px; min-height: 34px; height: 100%; cursor: pointer; }
+.plate-lbl input { width: 22px; height: 22px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+#tbl tbody.vehicle:has(.plate-chk:checked), #tbl tbody.vehicle:has(.plate-chk:checked) td.fz { background-color: var(--sel); }
+
+/* 操作ボタン（一覧印刷・依頼する・ナンバー外し依頼）は、右寄せの専用の段にまとめる */
+.row-actions { flex: 1 0 100%; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; }
+
+/* 実績の表：グレード・車種・色の欄に幅をとって、折り返し（行数）を減らす（広い画面だけ。狭い画面は欄が吹き出しからはみ出すため対象外） */
+@media (min-width: 1000px) {
+  .mk-tbl td.gr { min-width: 15em; }
+  .mk-tbl td.nm { min-width: 7em; }
+  .mk-tbl td.co { min-width: 8.5em; }
+}

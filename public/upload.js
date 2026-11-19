@@ -39,7 +39,7 @@ async function readFile(file) {
     items = csvToItems(rows);
     if (!items.length) throw new Error('車両データがありません');
     // まず判定だけ（保存はしない）
-    const r = await api('/api/import', { items, dry_run: true, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked, update_grade: $('#update-grade').checked });
+    const r = await api('/api/import', { items, dry_run: true, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked, update_grade: $('#update-grade').checked, update_plate: $('#update-plate').checked });
     results = r.results;
     render(r);
   } catch (e) {
@@ -97,7 +97,7 @@ $('#btn-import').addEventListener('click', async () => {
   btn.disabled = true;
   btn.textContent = '追加しています…';
   try {
-    const r = await api('/api/import', { items, file_name: fileName, dry_run: false, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked, update_grade: $('#update-grade').checked });
+    const r = await api('/api/import', { items, file_name: fileName, dry_run: false, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked, update_grade: $('#update-grade').checked, update_plate: $('#update-plate').checked });
     results = r.results;
     toast(`${r.added} 台を追加${r.filled ? `・${r.filled} 台を更新しました` : 'しました'}（スキップ ${r.exists + r.duplicate} 台）`);
     $('#preview').hidden = true;
@@ -114,7 +114,7 @@ $('#btn-import').addEventListener('click', async () => {
 async function recheck() {
   if (!items.length) return;
   try {
-    const r = await api('/api/import', { items, dry_run: true, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked, update_grade: $('#update-grade').checked });
+    const r = await api('/api/import', { items, dry_run: true, fill_empty: $('#fill-empty').checked, update_list_price: $('#update-list').checked, update_grade: $('#update-grade').checked, update_plate: $('#update-plate').checked });
     results = r.results;
     render(r);
   } catch (e) { toast(e.message, true); }
@@ -122,6 +122,7 @@ async function recheck() {
 $('#fill-empty').addEventListener('change', recheck);
 $('#update-list').addEventListener('change', recheck);
 $('#update-grade').addEventListener('change', recheck);
+$('#update-plate').addEventListener('change', recheck);
 
 // 最後に取り込んだ日時
 fetch('/api/import').then((r) => r.json()).then(({ last_import: li }) => {

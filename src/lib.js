@@ -3,7 +3,7 @@
 export const FIELDS = [
   'name', 'grade', 'first_reg', 'chassis_no', 'color', 'color_code', 'mileage', 'mileage_unit',
   'sales_points', 'has_warranty', 'has_manual',
-  'own_company', 'own_date', 'venue', 'event_date', 'shipped_date', 'carrier', 'landing_price',
+  'own_company', 'own_date', 'venue', 'event_date', 'shipped_date', 'carrier', 'landing_price', 'plate_no',
   'model_no', 'category', 'condition_rank', 'quantity',
   'purchase_date', 'purchase_price', 'supplier', 'location', 'list_price',
   'status', 'sold_date', 'sold_price', 'fees', 'notes',
@@ -37,6 +37,7 @@ const ADDED_COLUMNS = {
   landing_price: 'INTEGER', // 着地予想（円）
   carrier: 'TEXT',       // 陸送会社
   grade: 'TEXT',         // グレード
+  plate_no: 'TEXT',      // 登録番号（ナンバープレート。例：名古屋 300 あ 12-34）
 };
 let schemaReady = null;
 export function ensureSchema(db) {

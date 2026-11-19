@@ -26,7 +26,8 @@ const mdDate = (d) => {
   const thisYear = new Date(Date.now() + 9 * 3600e3).getUTCFullYear();
   return `${y !== thisYear ? y + '年' : ''}${m}月${day}日`;
 };
-const state = { q: '', event_date: '', shipped_date: '', beforeShip: true, own: '', venue: '', carrier: '', months: '', items: [] };
+const state = { q: '', event_date: '', shipped_date: '', beforeShip: true, own: '', venue: '', carrier: '', months: '', items: [], total: 0, plateMode: false };
+const plateSel = new Set(); // ナンバー外し依頼でチェックした車両の id
 try {
   // 出庫前のみ表示は既定でオン（自分でオフにした場合だけオフのまま）
   state.beforeShip = localStorage.getItem('zaiko-before-ship-v2') !== '0';
@@ -141,6 +142,7 @@ async function load() {
   try {
     const data = await api('/api/items?' + p);
     state.items = data.items;
+    state.total = data.total;
     render(data);
   } catch (e) {
     setBody(`<tbody><tr><td class="empty" colspan="${colCount()}">読み込みに失敗しました：${esc(e.message)}</td></tr></tbody>`);
@@ -166,6 +168,7 @@ const COLS = [
   ['shipped_date', '出庫日', 'date'],
   ['carrier', '陸送会社', 'center'],
   ['notes', 'メモ', 'wrap'],
+  ['plate_no', '登録番号'],
   ['created_at', '登録日'],
 ];
 const COL = Object.fromEntries(COLS.map(([k, label, cls]) => [k, { label, cls }]));
@@ -277,7 +280,8 @@ function renderHead() {
   const rows = layout();
   $('#tbl thead').innerHTML = rows.map((keys, r) => `<tr>${keys.map((e, i) => {
     const { k, span: cs } = spec(e);
-    const { label, cls } = COL[k];
+    const { cls } = COL[k];
+    const label = k === 'id' && state.plateMode ? '選択' : COL[k].label; // ナンバー外し依頼中は No. をチェック欄に
     const arrow = sortState.key === k ? (sortState.dir > 0 ? '▲' : '▼') : '';
     const span = (k === 'id' && rows.length > 1 ? ` rowspan="${rows.length}"` : '') + colspanAttr(cs);
     return `<th data-key="${k}"${span} class="${cls === 'center' ? cls : ''}${r > 0 ? ' sub' : ''}${rows.length > 1 || r === 0 ? fzClass(r, i) : ''}">${label}<span class="arrow">${arrow}</span></th>`;
@@ -300,6 +304,9 @@ function rowHtml(it) {
   const rows = layout();
   return rows.map((keys, r) => `<tr data-id="${it.id}"${r === rows.length - 1 ? ' class="last"' : ''}>${keys.map((e, i) => {
     const { k, span } = spec(e);
+    if (k === 'id' && state.plateMode) {
+      return `<td class="rowno fz fz0 plate-cell"><label class="plate-lbl" title="No.${it.id} ${esc(it.name ?? '')}"><input type="checkbox" class="plate-chk" data-id="${it.id}"${plateSel.has(it.id) ? ' checked' : ''} aria-label="No.${it.id} ${esc(it.name ?? '')} を選ぶ"></label></td>`;
+    }
     if (k === 'id') {
       return `<td class="rowno fz fz0"${rows.length > 1 ? ` rowspan="${rows.length}"` : ''}><button class="edit-btn" data-open="${it.id}" title="フォームで編集" aria-label="フォームで編集">✎</button>${it.id}</td>`;
     }
@@ -419,7 +426,7 @@ document.addEventListener('click', (e) => {
 
 // ---- 一覧での直接編集（ダブルクリック／ダブルタップ） ----
 const EDITABLE = new Set(['first_reg', 'name', 'grade', 'chassis_no', 'color', 'color_code', 'mileage', 'own_date', 'venue',
-  'event_date', 'shipped_date', 'carrier', 'purchase_price', 'landing_price', 'list_price', 'has_warranty', 'has_manual', 'notes']);
+  'event_date', 'shipped_date', 'carrier', 'purchase_price', 'landing_price', 'list_price', 'has_warranty', 'has_manual', 'notes', 'plate_no']);
 const DATE_KEYS = new Set(['own_date', 'event_date', 'shipped_date']);
 const VENUES = ['名古屋', '静岡', '廃車'];
 const CARRIERS = ['シンセイ①', 'シンセイ②', 'シンセイ③', 'シンセイ④', 'タカラ', '自社'];
@@ -539,6 +546,7 @@ $('#tbl').addEventListener('click', (e) => {
   if (tb) selectVehicle(tb);
   const open = e.target.closest('[data-open]');
   if (open) { openForm(state.items.find((i) => i.id == open.dataset.open)); return; }
+  if (state.plateMode) return; // ナンバー外し依頼中は、表の直接編集をしない
   const td = e.target.closest('td.editable');
   if (!td || td.classList.contains('editing')) return;
   const now = Date.now();
@@ -668,9 +676,9 @@ textarea{width:100%;box-sizing:border-box;height:calc(100vh - 90px);font:inherit
   ta.focus();
 }
 
-function openPdfWindow(items, fields = REQ_FIELDS, title = '依頼一覧') {
+function openPdfWindow(items, fields = REQ_FIELDS, title = '依頼一覧', opts = {}) {
   const w = window.open('', '_blank', 'width=1000,height=760');
-  if (!w) { toast('ポップアップがブロックされました。ブラウザの設定で許可してください', true); return; }
+  if (!w) { toast('ポップアップがブロックされました。ブラウザの設定で許可してください', true); return false; }
   const fl = filterLabel();
   const cls = (k) => k === 'mileage' ? ' class="r"' : WIDE_FIELDS.has(k) ? ' class="w"' : CENTER_FIELDS.has(k) ? ' class="c"' : '';
   const rows = items.map((it, i) => `<tr><td class="n">${i + 1}</td>${fields.map(([k]) => `<td${cls(k)}>${esc(reqVal(it, k))}</td>`).join('')}</tr>`).join('');
@@ -685,7 +693,7 @@ h1{font-size:18px;margin:0 0 4px}.sub{font-size:12px;color:#444;margin:0 0 6px}
 .cond{font-size:13px;margin:0 0 6px;padding:5px 9px;border:1px solid #444;display:inline-block;max-width:100%}.cond b{font-weight:700}
 table{border-collapse:collapse;width:100%;font-size:11px}
 th,td{border:1px solid #888;padding:4px 6px;text-align:left;vertical-align:top}
-th{background:#eef0f3}td.n{text-align:right;width:2em}td.r{text-align:right;white-space:nowrap}th,td{white-space:nowrap}td.w{white-space:normal;min-width:10em}.c{text-align:center}
+${opts.big ? 'table{font-size:15px}th,td{padding:8px 12px}th,td{white-space:normal}' : ''}th{background:#eef0f3}td.n{text-align:right;width:2em}td.r{text-align:right;white-space:nowrap}th,td{white-space:nowrap}td.w{white-space:normal;min-width:10em}.c{text-align:center}
 tr{break-inside:avoid}thead{display:table-header-group}tfoot{display:table-footer-group}
 .sp td{border:0;padding:0;height:0}
 .bar{margin:12px;display:flex;gap:8px;align-items:center}
@@ -694,13 +702,67 @@ tr{break-inside:avoid}thead{display:table-header-group}tfoot{display:table-foote
 <div class="page"><div class="head">
 <h1>${title}</h1>
 <p class="sub">${esc(todayLabel())}　全${items.length}台</p>
-<p class="cond"><b>対象：</b>${fl ? esc(fl) : 'すべて（絞り込みなし）'}</p></div>
+${opts.showFilter === false ? '' : `<p class="cond"><b>対象：</b>${fl ? esc(fl) : 'すべて（絞り込みなし）'}</p>`}</div>
 <table><thead><tr class="sp"><td colspan="${n}"></td></tr><tr><th>No.</th>${fields.map(([k, l]) => `<th${CENTER_FIELDS.has(k) ? ' class="c"' : ''}>${l}</th>`).join('')}</tr></thead><tfoot><tr class="sp"><td colspan="${n}"></td></tr></tfoot><tbody>${rows}</tbody></table></div>
 </body></html>`);
   w.document.close();
   w.focus();
   setTimeout(() => w.print(), 300);
+  return true;
 }
+
+// ---- ナンバー外し依頼 ----
+// ボタンを押すと表の左端（No.）がチェック欄に変わる。チェックして OK を押すと、
+// 車名・車台番号・登録番号・色 を PDF（印刷画面）にする
+const PLATE_FIELDS = [['name', '車名'], ['chassis_no', '車台番号'], ['plate_no', '登録番号'], ['color', '色']];
+const plateChecked = () => state.items.filter((it) => plateSel.has(it.id)); // 表に出ている車両のうちチェックしたもの
+function updatePlateUi() {
+  const sel = plateChecked();
+  const noPlate = sel.filter((it) => !String(it.plate_no || '').trim()).length;
+  $('#plate-count').textContent = sel.length
+    ? `${sel.length}台 選択中${noPlate ? `（登録番号が空：${noPlate}台）` : ''}`
+    : '選択中：0台';
+  $('#plate-ok').disabled = !sel.length;
+}
+function setPlateMode(on) {
+  if (editing) finishEdit(true);
+  state.plateMode = on;
+  if (!on) plateSel.clear();
+  $('#btn-plate').setAttribute('aria-pressed', String(on));
+  $('#plate-bar').hidden = !on;
+  hidePop();
+  render({ total: state.total });
+  updatePlateUi();
+}
+$('#btn-plate').addEventListener('click', () => setPlateMode(!state.plateMode));
+$('#plate-cancel').addEventListener('click', () => setPlateMode(false));
+$('#plate-all').addEventListener('click', () => {
+  state.items.forEach((it) => plateSel.add(it.id));
+  document.querySelectorAll('.plate-chk').forEach((c) => { c.checked = true; });
+  updatePlateUi();
+});
+$('#plate-none').addEventListener('click', () => {
+  plateSel.clear();
+  document.querySelectorAll('.plate-chk').forEach((c) => { c.checked = false; });
+  updatePlateUi();
+});
+$('#tbl').addEventListener('change', (e) => {
+  const c = e.target.closest('.plate-chk');
+  if (!c) return;
+  const id = Number(c.dataset.id);
+  if (c.checked) plateSel.add(id); else plateSel.delete(id);
+  updatePlateUi();
+});
+$('#plate-ok').addEventListener('click', () => {
+  // 表に出ている順（並び順をそのまま）で印刷する
+  const items = sortedItems().filter((it) => plateSel.has(it.id));
+  if (!items.length) { toast('ナンバーを外す車両にチェックを入れてください', true); return; }
+  const noPlate = items.filter((it) => !String(it.plate_no || '').trim()).length;
+  if (!openPdfWindow(items, PLATE_FIELDS, 'ナンバー外し依頼', { big: true, showFilter: false })) return;
+  setPlateMode(false);
+  if (noPlate) toast(`登録番号が空の車両が ${noPlate} 台あります（PDFでは空欄です）`, true);
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.plateMode && !dlg.open) setPlateMode(false); });
 
 const reqMenu = $('#req-menu');
 $('#btn-request').addEventListener('click', (e) => {
@@ -1003,10 +1065,10 @@ const MK_COLS = [
   ['date', '開催日', (r) => esc(String(r.auction_date || '').slice(2).replaceAll('-', '/')), (r) => r.auction_date || '', ''],
   ['venue', '会場', (r) => esc(r.venue || ''), (r) => r.venue || '', ''],
   ['year', '年式', (r) => esc(r.year || ''), yearKey, ''],
-  ['name', '車種', (r) => esc(r.model_name || ''), (r) => r.model_name || '', 'w'],
-  ['grade', 'グレード', (r) => esc(r.grade || ''), (r) => r.grade || '', 'w'],
+  ['name', '車種', (r) => esc(r.model_name || ''), (r) => r.model_name || '', 'w nm'],
+  ['grade', 'グレード', (r) => esc(r.grade || ''), (r) => r.grade || '', 'w gr'],
   ['km', '走行', (r) => (r.mileage_k != null ? r.mileage_k + '千km' : ''), (r) => r.mileage_k, 'r'],
-  ['color', '色', (r) => esc(r.color || ''), (r) => r.color || '', 'w'],
+  ['color', '色', (r) => esc(r.color || ''), (r) => r.color || '', 'w co'],
   ['score', '評価', (r) => esc(r.score || ''), (r) => r.score || '', 'c'],
   ['result', '結果', (r) => esc(r.result || ''), (r) => r.result || '', ''],
   ['price', '金額', (r) => man(r.price_k), (r) => r.price_k, 'r b'],
@@ -1099,7 +1161,7 @@ function placePop(anchor) {
   const X = vv ? vv.offsetLeft : 0, Y = vv ? vv.offsetTop : 0;
   const vw = vv ? vv.width : document.documentElement.clientWidth, vh = vv ? vv.height : window.innerHeight;
   const m = 8, gap = 6;
-  const w = Math.min(760, vw - m * 2);
+  const w = Math.min(1020, vw - m * 2); // 広い画面では横に広げて、グレードなどの折り返し（行数）を減らす
   pop.style.width = w + 'px';
   pop.style.left = Math.max(X + m, Math.min(r.left, X + vw - w - m)) + 'px';
   // 本来の高さを測ってから、下・上のうち収まる方（どちらも無理なら広い方）に出す

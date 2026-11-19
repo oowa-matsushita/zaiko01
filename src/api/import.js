@@ -3,10 +3,10 @@ import { clean, json } from '../lib.js';
 // POST /api/import  { items: [...], dry_run: true|false, fill_empty: true|false }
 // 車台番号が在庫にある車両・ファイル内で重複する車両はスキップし、新規だけ追加する（上書きしない）
 // fill_empty=true のときだけ、既存車両の「空欄の項目」を補う（入力済みの項目は変えない）
-// update_list_price=true / update_grade=true のときは、既存車両の予定価格・グレードを CSV の値で上書きする
+// update_list_price=true / update_grade=true / update_plate=true のときは、既存車両の予定価格・グレード・登録番号を CSV の値で上書きする
 const FILLABLE = ['first_reg', 'color', 'color_code', 'mileage', 'purchase_price', 'list_price'];
 // 既存車両の比較用に読み込む列（FILLABLE ＋ 上書き対象）
-const EXISTING_COLS = [...FILLABLE, 'grade'];
+const EXISTING_COLS = [...FILLABLE, 'grade', 'plate_no'];
 const isEmpty = (k, v) => v == null || v === '' || ((k === 'purchase_price' || k === 'list_price') && v === 0);
 const normChassis = (s) => String(s ?? '').normalize('NFKC').toUpperCase()
   .replace(/[ー－―‐−]/g, '-').replace(/[^A-Z0-9-]/g, '');
@@ -35,7 +35,7 @@ export async function onRequestPost({ request, env }) {
     if (!key) { results.push({ line, status: 'error', message: '車台番号がありません' }); continue; }
     if (have.has(key)) {
       const e = have.get(key);
-      if ((body.fill_empty || body.update_list_price || body.update_grade) && !seen.has(key)) {
+      if ((body.fill_empty || body.update_list_price || body.update_grade || body.update_plate) && !seen.has(key)) {
         let incoming = {};
         try { incoming = clean({ ...raw, chassis_no: key }); } catch { /* 補えない */ }
         const patch = body.fill_empty ? Object.fromEntries(FILLABLE
@@ -54,6 +54,11 @@ export async function onRequestPost({ request, env }) {
         if (body.update_grade && incoming.grade && incoming.grade !== (e.grade || '')) {
           set.grade = incoming.grade;
           msgs.push(`グレード ${e.grade || '空欄'} → ${incoming.grade}`);
+        }
+        // 登録番号も CSV の値で上書きする（CSV に値があり、今と違うときだけ）
+        if (body.update_plate && incoming.plate_no && incoming.plate_no !== (e.plate_no || '')) {
+          set.plate_no = incoming.plate_no;
+          msgs.push(`登録番号 ${e.plate_no || '空欄'} → ${incoming.plate_no}`);
         }
         if (Object.keys(patch).length) msgs.unshift(`空欄を補う：${Object.keys(patch).map((k) => LABEL[k]).join('・')}`);
         if (msgs.length) {
