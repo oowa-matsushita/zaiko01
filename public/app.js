@@ -144,6 +144,7 @@ async function load() {
     state.items = data.items;
     state.total = data.total;
     render(data);
+    if (state.plateMode) updatePlateUi();
   } catch (e) {
     setBody(`<tbody><tr><td class="empty" colspan="${colCount()}">読み込みに失敗しました：${esc(e.message)}</td></tr></tbody>`);
   }
@@ -262,9 +263,9 @@ const cellHtml = (it, k) => {
 };
 
 // 表に表示している順の車両一覧
-function sortedItems() {
+function sortedItems(list = state.items) {
   const { key, dir } = sortState;
-  return [...state.items].sort((a, b) => {
+  return [...list].sort((a, b) => {
     const x = sortVal(a, key), y = sortVal(b, key);
     if (x == null || x === '') return 1;
     if (y == null || y === '') return -1;
@@ -719,19 +720,26 @@ ${opts.showFilter === false ? '' : `<p class="cond"><b>対象：</b>${fl ? esc(f
 // ボタンを押すと表の左端（No.）がチェック欄に変わる。チェックして OK を押すと、
 // 車名・車台番号・登録番号・色 を PDF（印刷画面）にする
 const PLATE_FIELDS = [['name', '車名'], ['chassis_no', '車台番号'], ['plate_no', '登録番号'], ['color', '色']];
-const plateChecked = () => state.items.filter((it) => plateSel.has(it.id)); // 表に出ている車両のうちチェックしたもの
+// チェックした車両は、検索や絞り込みで表から見えなくなっても覚えておく（あとで別の車両を検索してチェックを足せるように）
+const plateItems = new Map(); // id → 車両のデータ
+const plateChecked = () => [...plateSel].map((id) => plateItems.get(id)).filter(Boolean);
 function updatePlateUi() {
+  // 表に出ている車両は最新のデータに入れ替える
+  for (const it of state.items) if (plateSel.has(it.id)) plateItems.set(it.id, it);
   const sel = plateChecked();
+  const visible = new Set(state.items.map((it) => it.id));
+  const hidden = sel.filter((it) => !visible.has(it.id)).length;
   const noPlate = sel.filter((it) => !String(it.plate_no || '').trim()).length;
   $('#plate-count').textContent = sel.length
-    ? `${sel.length}台 選択中${noPlate ? `（登録番号が空：${noPlate}台）` : ''}`
+    ? `${sel.length}台 選択中${hidden ? `（いま表に出ていない車両 ${hidden}台を含む）` : ''}${noPlate ? `（登録番号が空：${noPlate}台）` : ''}`
     : '選択中：0台';
   $('#plate-ok').disabled = !sel.length;
 }
 function setPlateMode(on) {
   if (editing) finishEdit(true);
   state.plateMode = on;
-  if (!on) plateSel.clear();
+  if (!on) { plateSel.clear(); plateItems.clear(); }
+  document.body.classList.toggle('plate-mode', on); // 選択中は背景を薄い青にする
   $('#btn-plate').setAttribute('aria-pressed', String(on));
   $('#plate-bar').hidden = !on;
   hidePop();
@@ -741,12 +749,12 @@ function setPlateMode(on) {
 $('#btn-plate').addEventListener('click', () => setPlateMode(!state.plateMode));
 $('#plate-cancel').addEventListener('click', () => setPlateMode(false));
 $('#plate-all').addEventListener('click', () => {
-  state.items.forEach((it) => plateSel.add(it.id));
+  state.items.forEach((it) => { plateSel.add(it.id); plateItems.set(it.id, it); });
   document.querySelectorAll('.plate-chk').forEach((c) => { c.checked = true; });
   updatePlateUi();
 });
 $('#plate-none').addEventListener('click', () => {
-  plateSel.clear();
+  plateSel.clear(); plateItems.clear();
   document.querySelectorAll('.plate-chk').forEach((c) => { c.checked = false; });
   updatePlateUi();
 });
@@ -754,19 +762,22 @@ $('#tbl').addEventListener('change', (e) => {
   const c = e.target.closest('.plate-chk');
   if (!c) return;
   const id = Number(c.dataset.id);
-  if (c.checked) plateSel.add(id); else plateSel.delete(id);
+  if (c.checked) { plateSel.add(id); plateItems.set(id, state.items.find((it) => it.id === id)); } else { plateSel.delete(id); plateItems.delete(id); }
   updatePlateUi();
 });
 $('#plate-ok').addEventListener('click', () => {
-  // 表に出ている順（並び順をそのまま）で印刷する
-  const items = sortedItems().filter((it) => plateSel.has(it.id));
+  // チェックした車両すべて（検索で見えなくなったものも）を、表の並び順で印刷する
+  const items = sortedItems(plateChecked());
   if (!items.length) { toast('ナンバーを外す車両にチェックを入れてください', true); return; }
   const noPlate = items.filter((it) => !String(it.plate_no || '').trim()).length;
   if (!openPdfWindow(items, PLATE_FIELDS, 'ナンバー外し依頼', { big: true, showFilter: false, portrait: true })) return;
   setPlateMode(false);
   if (noPlate) toast(`登録番号が空の車両が ${noPlate} 台あります（PDFでは空欄です）`, true);
 });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.plateMode && !dlg.open) setPlateMode(false); });
+document.addEventListener('keydown', (e) => {
+  // 検索欄などの入力中の Esc（検索を消す操作）では、ナンバー外しのモードを終わらせない
+  if (e.key === 'Escape' && state.plateMode && !dlg.open && !e.target.closest?.('input, textarea, select')) setPlateMode(false);
+});
 
 const reqMenu = $('#req-menu');
 $('#btn-request').addEventListener('click', (e) => {

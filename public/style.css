@@ -433,3 +433,8 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
   .mk-tbl td.nm { min-width: 7em; }
   .mk-tbl td.co { min-width: 8.5em; }
 }
+
+/* ナンバー外し依頼の選択中は、背景を薄い青にする（表やボタンの白はそのまま） */
+body.plate-mode { --bg: #e3eefc; }
+@media (prefers-color-scheme: dark) { body.plate-mode { --bg: #14233a; } }
+body.plate-mode .plate-bar { background: #fff; }
