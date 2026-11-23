@@ -73,3 +73,21 @@ export async function onRequestPost({ request, env }) {
   const row = await env.DB.prepare(sql).bind(...keys.map((k) => data[k])).first();
   return json(row, 201);
 }
+
+// POST /api/plate-request  { ids: [1, 2, ...] }
+// ナンバー外し依頼を出した車両の「依頼回数」を 1 つ増やす（PDF を出したときに画面から呼ぶ）
+export async function plateRequest({ request, env }) {
+  let body;
+  try { body = await request.json(); } catch { return json({ error: 'JSONを送ってください' }, 400); }
+  const ids = [...new Set((Array.isArray(body.ids) ? body.ids : []).map(Number))];
+  if (!ids.length || ids.length > 1000 || ids.some((n) => !Number.isInteger(n) || n <= 0)) {
+    return json({ error: 'ids に車両の番号を 1〜1000 件、送ってください' }, 400);
+  }
+  const stmts = [];
+  for (let i = 0; i < ids.length; i += 90) {
+    const part = ids.slice(i, i + 90);
+    stmts.push(env.DB.prepare(`UPDATE items SET plate_requests = COALESCE(plate_requests, 0) + 1 WHERE id IN (${part.map((_, j) => `?${j + 1}`).join(', ')})`).bind(...part));
+  }
+  const res = await env.DB.batch(stmts);
+  return json({ ok: true, updated: res.reduce((n, r) => n + (r.meta?.changes ?? 0), 0) });
+}

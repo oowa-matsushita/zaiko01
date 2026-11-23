@@ -38,6 +38,7 @@ const ADDED_COLUMNS = {
   carrier: 'TEXT',       // 陸送会社
   grade: 'TEXT',         // グレード
   plate_no: 'TEXT',      // 登録番号（ナンバープレート。例：名古屋 300 あ 12-34）
+  plate_requests: 'INTEGER NOT NULL DEFAULT 0', // ナンバー外し依頼を出した回数（POST /api/plate-request で +1）
 };
 let schemaReady = null;
 export function ensureSchema(db) {

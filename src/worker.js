@@ -11,6 +11,7 @@ import { json, ensureSchema } from './lib.js';
 import { isLoggedIn, handleLogin, handleLogout, loginPage, tokenOk } from './auth.js';
 
 const ROUTES = [
+  [/^\/api\/plate-request\/?$/, { onRequestPost: items.plateRequest }],
   [/^\/api\/items\/?$/, items],
   [/^\/api\/items\/(?<id>[^/]+)\/?$/, item],
   [/^\/api\/stats\/?$/, stats],

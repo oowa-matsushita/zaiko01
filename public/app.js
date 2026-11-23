@@ -171,6 +171,7 @@ const COLS = [
   ['notes', 'メモ', 'wrap'],
   ['plate_no', '登録番号'],
   ['created_at', '登録日'],
+  ['plate_requests', 'ナンバー外し回数', 'center'],
 ];
 const COL = Object.fromEntries(COLS.map(([k, label, cls]) => [k, { label, cls }]));
 COL.blank = { label: '', cls: 'blank' };
@@ -257,6 +258,7 @@ const cellHtml = (it, k) => {
     case 'purchase_price': case 'landing_price': return it[k] ? esc(yen(it[k])) : '';
     case 'has_warranty': case 'has_manual': return it[k] ? '✓' : '';
     case 'created_at': return esc(mdDate(jstDate(it.created_at)));
+    case 'plate_requests': return it.plate_requests ? `${it.plate_requests}回` : '';
     case 'own_date': case 'event_date': case 'shipped_date': return esc(mdDate(it[k]));
     default: return esc(it[k] ?? '');
   }
@@ -594,7 +596,7 @@ const REQ_FIELDS = [
 ];
 const DATE_FIELDS_REQ = new Set(['own_date', 'event_date', 'shipped_date']);
 // 一覧印刷はすべての項目（No. は通し番号）
-const LIST_FIELDS = COLS.filter(([k]) => k !== 'id').map(([k, l]) => [k, l]);
+const LIST_FIELDS = COLS.filter(([k]) => k !== 'id' && k !== 'plate_requests').map(([k, l]) => [k, l]);
 const WIDE_FIELDS = new Set(['notes']);
 const CENTER_FIELDS = new Set(['venue', 'carrier', 'has_warranty', 'has_manual']);
 const reqVal = (it, k) => k === 'mileage' ? (fmtMileage(it) ?? '')
@@ -765,13 +767,18 @@ $('#tbl').addEventListener('change', (e) => {
   if (c.checked) { plateSel.add(id); plateItems.set(id, state.items.find((it) => it.id === id)); } else { plateSel.delete(id); plateItems.delete(id); }
   updatePlateUi();
 });
-$('#plate-ok').addEventListener('click', () => {
+$('#plate-ok').addEventListener('click', async () => {
   // チェックした車両すべて（検索で見えなくなったものも）を、表の並び順で印刷する
   const items = sortedItems(plateChecked());
   if (!items.length) { toast('ナンバーを外す車両にチェックを入れてください', true); return; }
   const noPlate = items.filter((it) => !String(it.plate_no || '').trim()).length;
   if (!openPdfWindow(items, PLATE_FIELDS, 'ナンバー外し依頼', { big: true, showFilter: false, portrait: true })) return;
   setPlateMode(false);
+  // PDF を出した車両の「ナンバー外し回数」を 1 つ増やす
+  try {
+    await api('/api/plate-request', { method: 'POST', body: JSON.stringify({ ids: items.map((it) => it.id) }) });
+    load();
+  } catch (e) { toast(`回数を記録できませんでした：${e.message}`, true); }
   if (noPlate) toast(`登録番号が空の車両が ${noPlate} 台あります（PDFでは空欄です）`, true);
 });
 document.addEventListener('keydown', (e) => {
