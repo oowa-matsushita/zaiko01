@@ -56,24 +56,30 @@ const shortDate = (iso) => { const [, m, d] = iso.split('-').map(Number); return
 const VENUE_DAY = { 5: '名古屋', 6: '静岡' };
 const VENUE_WEEKDAY = { 名古屋: 5, 静岡: 6 };
 const VENUE_CLASS = { 名古屋: 'nagoya', 静岡: 'shizuoka', 廃車: 'haisha' };
+// 表示する期間を、今日からどれだけずらしているか（日数。マイナスは過去）。行ごとに別々に動かせる
+const dateShift = { event_date: 0, shipped_date: 0 };
+const SHIFT_STEP = { event_date: 28, shipped_date: 7 }; // 矢印1回で動く日数（開催日＝4週間、出庫日＝1週間）
+let lastDateCounts = null;
 // 開催日：今日から4週間の金曜・土曜
 function eventDates() {
-  const t = jstToday(), out = [];
+  const t = addDays(jstToday(), dateShift.event_date), out = [];
   for (let i = 0; i < 28; i++) { const d = addDays(t, i); if (dow(d) === 5 || dow(d) === 6) out.push(d); }
   return out;
 }
 // 出庫日：今日から7日分
 // 出庫日：今日から7日分 ＋ それより先で出庫予定のある日
 function shippedDates(counts = {}) {
-  const t = jstToday();
+  const t = addDays(jstToday(), dateShift.shipped_date);
   const week = Array.from({ length: 7 }, (_, i) => addDays(t, i));
-  const later = Object.keys(counts).filter((d) => d > week[6] && counts[d] > 0);
+  // 「それより先で出庫予定のある日」は、今日を見ているときだけ足す（過去を見ているときは、その1週間だけ）
+  const later = dateShift.shipped_date === 0 ? Object.keys(counts).filter((d) => d > week[6] && counts[d] > 0) : [];
   return [...week, ...later].sort();
 }
 
 // 開催日（金・土）と出庫日（7日分）を、同じ日付が上下にそろう表にする。
 // 列はどちらかに枠がある日付だけ。該当しない側は空きマス
 function renderDateGrid(counts) {
+  lastDateCounts = counts;
   const ev = eventDates(), sh = shippedDates(counts.shipped_date);
   const extra = [state.event_date, state.shipped_date].filter((d) => d && !ev.includes(d) && !sh.includes(d));
   const cols = [...new Set([...ev, ...sh, ...extra])].sort();
@@ -93,14 +99,22 @@ function renderDateGrid(counts) {
         aria-pressed="${state.shipped_date === d && state.carrier === c}">${esc(c)} <b>${n}台</b></button>`).join('');
     return `<div class="ship-cell">${box('shipped_date', d)}${chips ? `<div class="ship-carriers">${chips}</div>` : ''}</div>`;
   };
+  // 行の左：見出しと、期間を前後に動かす矢印（◀ 過去へ／▶ 先へ／ずらしているときだけ「今日」に戻す）
+  const nav = (field, label) => {
+    const past = dateShift[field] < 0, shifted = dateShift[field] !== 0, unit = field === 'event_date' ? '4週間' : '1週間';
+    return `<span class="df-label"><span class="df-name">${label}</span><span class="df-nav">` +
+      `<button type="button" data-nav="${field}" data-dir="-1" title="${label}を${unit}前へ（過去）" aria-label="${label}を${unit}前へ">◀</button>` +
+      `<button type="button" data-nav="${field}" data-dir="1" title="${label}を${unit}先へ" aria-label="${label}を${unit}先へ">▶</button></span>` +
+      (shifted ? `<button type="button" class="df-today" data-nav="${field}" data-dir="0" title="${past ? '過去を表示中。' : '先を表示中。'}押すと今日の表示に戻ります">今日へ</button>` : '') + '</span>';
+  };
   const row = (field, label, list) =>
-    `<span class="df-label">${label}</span>` +
+    nav(field, label) +
     `<button type="button" class="date-box all" data-field="${field}" data-date="" aria-pressed="${!state[field]}"><span class="n">すべて</span></button>` +
     cols.map((d) => (list.includes(d) || state[field] === d
       ? (field === 'shipped_date' ? shipCell(d) : box(field, d))
       : '<span class="date-empty"></span>')).join('');
   const g = $('#f-dates');
-  g.style.gridTemplateColumns = `3.5em minmax(58px, 1fr) repeat(${cols.length}, minmax(64px, 1fr))`;
+  g.style.gridTemplateColumns = `var(--df-w) minmax(58px, 1fr) repeat(${cols.length}, minmax(64px, 1fr))`;
   requestAnimationFrame(updateScrollHints);
   g.innerHTML = row('event_date', '開催日', ev) + row('shipped_date', '出庫日', sh);
 }
@@ -113,6 +127,14 @@ async function loadDateCounts() {
 
 // 枠をクリックで絞り込み（選択中の枠をもう一度押すと解除）
 $('#f-dates').addEventListener('click', (e) => {
+  // 矢印：表示する期間を前後に動かす（今日に戻すボタンも）
+  const nv = e.target.closest('[data-nav]');
+  if (nv) {
+    const f = nv.dataset.nav, dir = Number(nv.dataset.dir);
+    dateShift[f] = dir === 0 ? 0 : dateShift[f] + dir * SHIFT_STEP[f];
+    if (lastDateCounts) renderDateGrid(lastDateCounts); else loadDateCounts();
+    return;
+  }
   // 陸送会社ボタン：その出庫日・その陸送会社に絞り込む（もう一度押すと陸送会社だけ解除）
   const chip = e.target.closest('.carrier-chip');
   if (chip) {

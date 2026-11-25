@@ -255,9 +255,14 @@ button, .scan-btn, .date-box, .menu, .mic, .toggle { border-radius: 0 !important
 /* 開催日・出庫日：日付を上下にそろえたグリッド（横スクロール） */
 .date-scroll { overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
 .date-grid { display: grid; grid-auto-rows: auto; gap: 6px; width: max-content; }
-.date-grid .df-label { position: sticky; left: 0; z-index: 2; background: var(--bg); box-shadow: 6px 0 0 var(--bg), -16px 0 0 var(--bg); align-self: stretch; display: flex; align-items: center; width: auto; }
+.date-grid { --df-w: 6.4em; }
+.date-grid .df-label { position: sticky; left: 0; z-index: 2; background: var(--bg); box-shadow: 6px 0 0 var(--bg), -16px 0 0 var(--bg); align-self: stretch; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; width: auto; }
+.df-nav { display: flex; gap: 3px; }
+.df-nav button, .df-today { min-height: 28px; padding: 0 13px; font-size: .85rem; line-height: 1.5; font-weight: 400; border-radius: 0; }
+.df-nav button:hover { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.df-today { min-height: 0; width: 100%; padding: 1px 4px; font-size: .75rem; font-weight: 700; background: var(--hover); color: var(--accent); border: 1px solid var(--accent); white-space: nowrap; }
 .date-grid .date-box { min-width: 0; width: 100%; }
-.date-grid .date-box.all { position: sticky; left: calc(3.5em + 6px); z-index: 2; box-shadow: 6px 0 0 var(--bg), -6px 0 0 var(--bg); white-space: nowrap; }
+.date-grid .date-box.all { position: sticky; left: calc(var(--df-w) + 6px); z-index: 2; box-shadow: 6px 0 0 var(--bg), -6px 0 0 var(--bg); white-space: nowrap; }
 .date-empty { border: 1px dashed var(--line); background: transparent; }
 /* ---- 画面幅への自動調整・スクロールバーを常に表示 ---- */
 .table-wrap, .date-scroll { scrollbar-width: auto; scrollbar-color: #8a93a3 var(--thead); }
